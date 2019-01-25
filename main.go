@@ -24,10 +24,10 @@ var contextSources = app.StringsOpt("context", nil,
 	"Specify multiple context sources in format Name=<yaml/json file> (e.g. Values=helm-chart-values.yaml")
 
 var srcDir = app.StringArg("SRC", "", "Specify source files dir for your site.")
-var dstDir = app.StringArg("DST", "published", "Specify destination dir for your site publication.")
+var dstDir = app.StringArg("DST", "published/", "Specify destination dir for your site publication.")
 
 func main() {
-	app.Spec = "SRC [DST]"
+	// app.Spec = "SRC [DST]"
 	app.Before = func() {
 		log.AddHook(filename.NewHook())
 		log.SetLevel(log.Level(*logLevel))
@@ -40,12 +40,14 @@ func main() {
 
 func mainCmd() {
 	delimsParsed := strings.Split(*delimiters, ",")
-	if len(delimsParsed) != 0 {
-		log.Fatalln("[ERR] incorrect delimiters specification:", *delimiters)
+	if len(delimsParsed) != 2 {
+		log.Fatalln("incorrect delimiters specification:", *delimiters)
 	}
 	srcAbsPath, err := filepath.Abs(*srcDir)
 	if err != nil {
-		log.Fatalln("[ERR] cannot get absolute path for:", *srcDir)
+		log.Fatalln("cannot get absolute path for:", *srcDir)
+	} else if !strings.HasSuffix(srcAbsPath, "/") {
+		srcAbsPath += "/"
 	}
 	loader, err := NewTemplateLoader(
 		[]string{*srcDir},
@@ -55,75 +57,90 @@ func mainCmd() {
 			RightDelim: delimsParsed[1],
 		})
 	if err != nil {
-		log.Fatalln("[ERR]", err)
+		log.Fatalln(err)
 	}
 	c := NewTemplateContext()
 	for _, source := range *contextSources {
 		parts := strings.Split(source, "=")
 		if len(parts) != 2 {
 			err := fmt.Errorf("incorrect context source specification: %s", source)
-			log.Fatalln("[ERR]", err)
+			log.Fatalln(err)
 		}
 		name := strings.TrimSpace(parts[0])
 		path := strings.TrimSpace(parts[1])
 		data, err := ioutil.ReadFile(path)
 		if err != nil {
-			log.Fatalln("[ERR]", err)
+			log.Fatalln(err)
 		}
 		sourceExt := filepath.Ext(path)
 		if sourceExt == ".json" {
 			if err := c.LoadFromJSON(name, data); err != nil {
 				err = fmt.Errorf("error loading %s: %v", path, err)
-				log.Fatalln("[ERR]", err)
+				log.Fatalln(err)
 			}
 		} else if sourceExt == ".yaml" || sourceExt == ".yml" {
 			if err := c.LoadFromYAML(name, data); err != nil {
 				err = fmt.Errorf("error loading %s: %v", path, err)
-				log.Fatalln("[ERR]", err)
+				log.Fatalln(err)
 			}
 		} else {
 			err := fmt.Errorf("unsupported Context source format: %s", sourceExt)
-			log.Fatalln("[ERR]", err)
+			log.Fatalln(err)
 		}
 	}
 	if err := c.LoadEnvVars(); err != nil {
-		log.Fatalln("[ERR]", err)
+		log.Fatalln(err)
 	}
 	if err := c.LoadOsVars(); err != nil {
-		log.Fatalln("[ERR]", err)
+		log.Fatalln(err)
 	}
 
-	var singularActions []QueueAction
+	var verbatimActions Queue
+	if err := loader.ForEachSource(TemplateModeVerbatim, func(source string) error {
+		relativePath := strings.TrimPrefix(source, srcAbsPath)
+		target := filepath.Join(*dstDir, relativePath)
+		verbatimActions = append(verbatimActions, CopyFileAction(target, source))
+		return nil
+	}); err != nil {
+		log.Fatalln(err)
+	}
+	if *dryRun {
+		fmt.Println(verbatimActions.Description("Verbatim Files"))
+	}
+
+	var singularActions Queue
 	if err := loader.RenderEachTemplate(TemplateModeSingle, func(tpl *template.Template, source string) error {
+		relativePath := strings.TrimPrefix(source, srcAbsPath)
 		contents, err := renderTemplate(tpl, source, c)
 		if err != nil {
-			err = fmt.Errorf("template rendering failed for %s: %v", source, err)
-			log.Fatalln("[ERR]", err)
+			err = fmt.Errorf("template rendering failed for %s: %v", relativePath, err)
+			log.Fatalln(err)
 		}
-
-		relativePath := strings.TrimSuffix(source, srcAbsPath)
 		target := filepath.Join(*dstDir, relativePath)
 		if info, err := os.Stat(target); os.IsNotExist(err) {
 			singularActions = append(singularActions, CreateNewFileAction(target, contents))
 		} else if info.IsDir() {
-			log.Fatalln("[ERR] target is dir:", target)
+			log.Fatalln("target is dir:", target)
 		} else {
 			singularActions = append(singularActions, OverwriteFileAction(target, contents))
 		}
 		return nil
 	}); err != nil {
-		err = fmt.Errorf("tempate vlaidation failed: %v", err)
-		log.Fatalln("[ERR]", err)
+		err = fmt.Errorf("tempate validation failed: %v", err)
+		log.Fatalln(err)
+	}
+	if *dryRun {
+		fmt.Println(singularActions.Description("Single Templates"))
+	}
+
+	if *dryRun {
+		return
 	}
 	actionQueue := NewQueue(
 		NewDirAction(*dstDir),
 	)
+	actionQueue = append(actionQueue, verbatimActions...)
 	actionQueue = append(actionQueue, singularActions...)
-
-	if *dryRun {
-		fmt.Println(actionQueue.Description())
-		return
-	}
 	ts := time.Now()
 	if !actionQueue.Exec() {
 		log.Infoln("failed in", time.Since(ts))
@@ -134,7 +151,7 @@ func mainCmd() {
 
 func renderTemplate(tpl *template.Template, source string, c TemplateContext) ([]byte, error) {
 	buf := new(bytes.Buffer)
-	if err := tpl.ExecuteTemplate(buf, source, c); err != nil {
+	if err := tpl.ExecuteTemplate(buf, filepath.Base(source), c); err != nil {
 		return nil, err
 	}
 	data := buf.Bytes()

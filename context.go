@@ -142,7 +142,8 @@ func (c TemplateContext) LoadOsVars() error {
 	osVars["WorkDir"], _ = os.Getwd()
 	osVars["Hostname"], _ = os.Hostname()
 	osVars["Executable"], _ = os.Executable()
-	osVars["ARCH"] = runtime.GOARCH
+	osVars["RuntimeVersion"] = runtime.Version()
+	osVars["Arch"] = runtime.GOARCH
 	osVars["OS"] = runtime.GOOS
 	c["OS"] = osVars
 	return nil

@@ -16,7 +16,7 @@ import (
 type TemplateLoader struct {
 	opts      *TemplateLoaderOptions
 	sources   map[TemplateMode][]string
-	templates map[TemplateMode]*template.Template
+	templates map[TemplateMode]map[string]*template.Template
 
 	// filepathTplRx contains a precompiled Rx for replacing template tags
 	// in file paths, token delims must be quoted before compiling such Rx.
@@ -58,9 +58,15 @@ func checkTemplateLoaderOptions(opts *TemplateLoaderOptions) *TemplateLoaderOpti
 func NewTemplateLoader(paths []string, opts *TemplateLoaderOptions) (*TemplateLoader, error) {
 	loader := &TemplateLoader{
 		opts:      checkTemplateLoaderOptions(opts),
-		sources:   make(map[TemplateMode][]string, 2),
-		templates: make(map[TemplateMode]*template.Template, 2),
+		sources:   make(map[TemplateMode][]string, 3),
+		templates: make(map[TemplateMode]map[string]*template.Template, 2),
 	}
+	loader.filepathTplRx = regexp.MustCompile(
+		regexp.QuoteMeta(loader.opts.LeftDelim) +
+			`\s*(?P<field>\.?[a-zA-Z0-9_.]+)\s*` +
+			regexp.QuoteMeta(loader.opts.RightDelim),
+	)
+
 	seen := make(map[string]struct{})
 	for _, path := range paths {
 		fullPath, err := filepath.Abs(path)
@@ -109,24 +115,35 @@ func NewTemplateLoader(paths []string, opts *TemplateLoaderOptions) (*TemplateLo
 	sort.Strings(loader.sources[TemplateModeVerbatim])
 	sort.Strings(loader.sources[TemplateModeCollection])
 
-	if tpl, err := template.ParseFiles(loader.sources[TemplateModeSingle]...); err != nil {
-		err = fmt.Errorf("template parse error: %v", err)
-		return nil, err
-	} else {
-		loader.templates[TemplateModeSingle] = tpl
-	}
-	if tpl, err := template.ParseFiles(loader.sources[TemplateModeCollection]...); err != nil {
-		err = fmt.Errorf("template parse error: %v", err)
-		return nil, err
-	} else {
-		loader.templates[TemplateModeCollection] = tpl
+	singleSources := loader.sources[TemplateModeSingle]
+	for _, source := range singleSources {
+		tpl, err := template.New(source).ParseFiles(source)
+		if err != nil {
+			err = fmt.Errorf("template parse error: %v", err)
+			return nil, err
+		}
+		set := loader.templates[TemplateModeSingle]
+		if set == nil {
+			set = make(map[string]*template.Template, len(singleSources))
+			loader.templates[TemplateModeSingle] = set
+		}
+		set[source] = tpl
 	}
 
-	loader.filepathTplRx = regexp.MustCompile(
-		regexp.QuoteMeta(loader.opts.LeftDelim) +
-			`\s*(?P<field>\.?[a-zA-Z0-9_.]+)\s*` +
-			regexp.QuoteMeta(loader.opts.RightDelim),
-	)
+	collectionSources := loader.sources[TemplateModeCollection]
+	for _, source := range collectionSources {
+		tpl, err := template.New(source).ParseFiles(source)
+		if err != nil {
+			err = fmt.Errorf("template parse error: %v", err)
+			return nil, err
+		}
+		set := loader.templates[TemplateModeCollection]
+		if set == nil {
+			set = make(map[string]*template.Template, len(collectionSources))
+			loader.templates[TemplateModeCollection] = set
+		}
+		set[source] = tpl
+	}
 
 	return loader, nil
 }
@@ -264,6 +281,17 @@ func (l *TemplateLoader) RenderFilepath(
 	return resultMap, nil
 }
 
+type SourceFunc func(source string) error
+
+func (l *TemplateLoader) ForEachSource(mode TemplateMode, fn SourceFunc) error {
+	for _, source := range l.sources[mode] {
+		if err := fn(source); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type RenderFunc func(tpl *template.Template, source string) error
 
 func (l *TemplateLoader) RenderEachTemplate(mode TemplateMode, fn RenderFunc) error {
@@ -272,7 +300,7 @@ func (l *TemplateLoader) RenderEachTemplate(mode TemplateMode, fn RenderFunc) er
 		return err
 	}
 	for _, source := range l.sources[mode] {
-		if err := fn(l.templates[mode], source); err != nil {
+		if err := fn(l.templates[mode][source], source); err != nil {
 			return err
 		}
 	}

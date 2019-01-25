@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,9 +20,12 @@ func NewQueue(actions ...QueueAction) Queue {
 	return Queue(actions)
 }
 
-func (q Queue) Description() string {
+func (q Queue) Description(title string) string {
+	if len(title) == 0 {
+		title = "Queue"
+	}
 	t := treeprint.New()
-	t = t.AddBranch("Actions to be committed")
+	t = t.AddBranch(title)
 	for i, action := range q {
 		t.AddMetaNode(fmt.Sprintf("%d", i+1), action.Comment())
 	}
@@ -132,6 +137,29 @@ func OverwriteFileAction(path string, contents []byte) QueueAction {
 	}
 }
 
+func CopyFileAction(dst, src string) QueueAction {
+	return &queueAction{
+		action: func() (f *os.File, err error) {
+			return os.Create(dst)
+		},
+		comment: fmt.Sprintf("copy file %s", dstPath(dst)),
+		finalize: func(dstFile *os.File) error {
+			if dstFile == nil {
+				return nil
+			}
+			defer dstFile.Close()
+			srcFile, err := os.Open(src)
+			if err != nil {
+				return err
+			}
+			return copyFileToFile(dstFile, srcFile)
+		},
+		revert: func() error {
+			return os.Remove(dst)
+		},
+	}
+}
+
 type queueAction struct {
 	action   func() (*os.File, error)
 	comment  string
@@ -172,7 +200,12 @@ func dstPath(path string) string {
 	return filepath.Join("[dst]", strings.TrimPrefix(path, *dstDir))
 }
 
+func copyFileToFile(dst, src *os.File) error {
+	_, err := io.Copy(dst, src)
+	return err
+}
+
 func flushBufferToFile(buf []byte, f *os.File) error {
-	_, err := f.Write(buf)
+	_, err := io.Copy(f, bytes.NewReader(buf))
 	return err
 }
