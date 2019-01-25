@@ -22,6 +22,7 @@ func FieldValue(path string, in interface{}) (v interface{}, found bool) {
 	}
 	cur := reflect.ValueOf(in)
 	for i, part := range parts {
+		part := strings.ToLower(part)
 		for {
 			if cur.Kind() == reflect.Ptr || cur.Kind() == reflect.Interface {
 				cur = cur.Elem()
@@ -31,8 +32,21 @@ func FieldValue(path string, in interface{}) (v interface{}, found bool) {
 		}
 		if cur.Kind() == reflect.Struct {
 			cur = cur.FieldByNameFunc(func(name string) bool {
-				return strings.ToLower(name) == strings.ToLower(part)
+				return strings.ToLower(name) == part
 			})
+		} else if cur.Kind() == reflect.Map {
+			keys := cur.MapKeys()
+			var keyFound bool
+			for _, k := range keys {
+				if strings.ToLower(k.String()) == part {
+					cur = cur.MapIndex(k)
+					keyFound = true
+					break
+				}
+			}
+			if !keyFound {
+				return nil, false
+			}
 		} else if i != len(parts)-1 {
 			// not last, but already has no deep
 			return nil, false
@@ -97,41 +111,92 @@ func FieldList(in interface{}) []string {
 	}()
 
 	t := reflect.TypeOf(in)
+	v := reflect.ValueOf(in)
 	for {
 		if t.Kind() == reflect.Ptr ||
 			t.Kind() == reflect.Interface {
 			t = t.Elem()
+			v = v.Elem()
 			continue
 		}
 		break
 	}
-	flatList := make([]string, 0, t.NumField())
-	flatList = traverseFields("", flatList, t)
+	var flatList []string
+	if t.Kind() == reflect.Struct {
+		flatList = make([]string, 0, t.NumField())
+		flatList = traverseFields("", flatList, t, v)
+	} else if t.Kind() == reflect.Map {
+		flatList = make([]string, 0, len(v.MapKeys()))
+		flatList = traverseMap("", flatList, t, v)
+	}
 	sort.Strings(flatList)
 	return flatList
 }
 
-func traverseFields(prefix string, flatList []string, t reflect.Type) []string {
+func traverseFields(prefix string, flatList []string, t reflect.Type, v reflect.Value) []string {
 	n := t.NumField()
 	for i := 0; i < n; i++ {
-		f := t.Field(i).Type
+		var field reflect.Value
+		if v.IsValid() {
+			field = v.Field(i)
+		}
+		fieldType := t.Field(i).Type
 		for {
-			if f.Kind() == reflect.Ptr || f.Kind() == reflect.Interface {
-				f = f.Elem()
+			if fieldType.Kind() == reflect.Ptr || fieldType.Kind() == reflect.Interface {
+				fieldType = fieldType.Elem()
+				if field.IsValid() {
+					field = field.Elem()
+				}
 				continue
 			}
 			break
 		}
-		fPrefix := t.Field(i).Name
+		fieldPrefix := t.Field(i).Name
 		if len(prefix) > 0 {
-			fPrefix = fmt.Sprintf("%s.%s", prefix, fPrefix)
+			fieldPrefix = fmt.Sprintf("%s.%s", prefix, fieldPrefix)
 		}
 
-		if f.Kind() == reflect.Struct {
-			flatList = traverseFields(fPrefix, flatList, f)
+		if fieldType.Kind() == reflect.Struct {
+			flatList = traverseFields(fieldPrefix, flatList, fieldType, field)
+			continue
+		} else if fieldType.Kind() == reflect.Map {
+			flatList = traverseMap(fieldPrefix, flatList, fieldType, field)
 			continue
 		}
-		flatList = append(flatList, fPrefix)
+		flatList = append(flatList, fieldPrefix)
+	}
+	return flatList
+}
+
+func traverseMap(prefix string, flatList []string, t reflect.Type, v reflect.Value) []string {
+	for _, key := range v.MapKeys() {
+		var field reflect.Value
+		if v.IsValid() {
+			field = v.MapIndex(key)
+		}
+		fieldType := field.Type()
+		for {
+			if fieldType.Kind() == reflect.Ptr || fieldType.Kind() == reflect.Interface {
+				fieldType = fieldType.Elem()
+				if field.IsValid() {
+					field = field.Elem()
+				}
+				continue
+			}
+			break
+		}
+		fieldPrefix := key.String()
+		if len(prefix) > 0 {
+			fieldPrefix = fmt.Sprintf("%s.%s", prefix, key.String())
+		}
+		if fieldType.Kind() == reflect.Struct {
+			flatList = traverseFields(fieldPrefix, flatList, fieldType, field)
+			continue
+		} else if fieldType.Kind() == reflect.Map {
+			flatList = traverseMap(fieldPrefix, flatList, fieldType, field)
+			continue
+		}
+		flatList = append(flatList, fieldPrefix)
 	}
 	return flatList
 }
