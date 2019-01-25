@@ -15,7 +15,7 @@ import (
 
 type TemplateLoader struct {
 	opts      *TemplateLoaderOptions
-	sources   [TemplateMode][]string
+	sources   map[TemplateMode][]string
 	templates map[TemplateMode]*template.Template
 
 	// filepathTplRx contains a precompiled Rx for replacing template tags
@@ -27,6 +27,7 @@ type TemplateMode string
 
 const (
 	TemplateModeSingle     TemplateMode = "single"
+	TemplateModeVerbatim   TemplateMode = "verbatim"
 	TemplateModeCollection TemplateMode = "collection"
 )
 
@@ -57,23 +58,31 @@ func checkTemplateLoaderOptions(opts *TemplateLoaderOptions) *TemplateLoaderOpti
 func NewTemplateLoader(paths []string, opts *TemplateLoaderOptions) (*TemplateLoader, error) {
 	loader := &TemplateLoader{
 		opts:      checkTemplateLoaderOptions(opts),
-		sources:   make([TemplateMode][]string, 2),
+		sources:   make(map[TemplateMode][]string, 2),
 		templates: make(map[TemplateMode]*template.Template, 2),
 	}
 	seen := make(map[string]struct{})
 	for _, path := range paths {
-		fullPath, err := filepath.Abs()
+		fullPath, err := filepath.Abs(path)
 		if err != nil {
 			log.WithFields(log.Fields{
-				"Path", path,
+				"Path": path,
 			}).Warningln("unable to convert path to absolute, skipping")
 			continue
 		}
-		if info, err := os.Stat(fullPath); !info.IsDir() {
-			if _, ok := seen[name]; ok {
-				return nil
+		info, err := os.Stat(fullPath)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"Path":     path,
+				"FullPath": fullPath,
+			}).Warningln("unable to stat, skipping")
+			continue
+		}
+		if !info.IsDir() {
+			if _, ok := seen[fullPath]; ok {
+				continue
 			} else {
-				seen[name] = struct{}{}
+				seen[fullPath] = struct{}{}
 			}
 			loader.addFileSource(fullPath)
 			continue
@@ -91,12 +100,13 @@ func NewTemplateLoader(paths []string, opts *TemplateLoaderOptions) (*TemplateLo
 			return nil
 		}); err != nil {
 			log.WithFields(log.Fields{
-				"Path", fullPath,
+				"Path": fullPath,
 			}).Warningln("unable to walk down the path, skipping")
 			continue
 		}
 	}
 	sort.Strings(loader.sources[TemplateModeSingle])
+	sort.Strings(loader.sources[TemplateModeVerbatim])
 	sort.Strings(loader.sources[TemplateModeCollection])
 
 	if tpl, err := template.ParseFiles(loader.sources[TemplateModeSingle]...); err != nil {
@@ -124,54 +134,147 @@ func NewTemplateLoader(paths []string, opts *TemplateLoaderOptions) (*TemplateLo
 func (l *TemplateLoader) addFileSource(path string) {
 	name := filepath.Base(path)
 	dir := filepath.Dir(path)
-	mode := TemplateCollection
-	if strings.HasPrefix(name, l.opts.ModePrefix) {
+	mode := TemplateModeVerbatim
+	if l.filepathTplRx.MatchString(path) {
+		mode = TemplateModeCollection
+	} else if strings.HasPrefix(name, l.opts.ModePrefix) {
 		path = filepath.Join(dir, name)
-		mode = TemplateSingle
+		mode = TemplateModeSingle
 	}
 	l.sources[mode] = append(l.sources[mode], path)
 }
 
-func (l *TemplateLoader) RenderFilepath(c TemplateContext, pathTemplate string) (string, error) {
-	var err error
-	var collectionField string
-	result := l.filepathTplRx.ReplaceAllStringFunc(pathTemplate, func(field string) string {
-		field = strings.TrimPrefix(field, ".")
-		if itemsLength := c.LengthOf(field); itemsLength > 0 {
-			if len(collectionField) > 0 {
-				err = fmt.Errorf("multiple collections are not expected at the same time, first was: %s", collectionField)
-				return ""
-			} else {
-				collectionField = field
-			}
-			current, ok := c["Current"]
-			if !ok {
-				err = errors.New("field points to a collection, but current item is not set")
-				return ""
-			}
-			return fmt.Sprintf("%v", current)
+// findCollectionPrefix finds the shortest prefix of a collection referenced in selector.
+// It returns two new selectors: collection selector from TemplateContext,
+// also field selector for elements in collection. It returns false,
+// if no collection prefix found.
+func findCollectionPrefix(c TemplateContext, selector string) (string, string, bool) {
+	parts := strings.Split(selector, ".")
+	prefix := parts[0]
+	if _, ok := c.LengthOf(prefix); ok {
+		if len(parts) == 1 {
+			// only collection specified
+			return prefix, "", true
 		}
-		v, ok := c.Item(field)
-	})
-	if err != nil {
-		return "", err
+		// collection prefix and field selector specified
+		selector := strings.Join(parts[1:], ".")
+		return prefix, selector, true
+	} else if len(parts) == 1 {
+		// only one part specified and it's not a collection prefix
+		return "", "", false
 	}
-	return result, nil
+	for i := 1; i < len(parts); i++ {
+		prefix += "." + parts[i]
+		if _, ok := c.LengthOf(prefix); ok {
+			if i == len(parts)-1 {
+				// was last part — the whole selector is a collection prefix
+				return prefix, "", true
+			}
+			// collection prefix and field selector specified
+			selector := strings.Join(parts[i:], ".")
+			return prefix, selector, true
+		}
+	}
+	// no collection prefix found in the specified selector
+	return "", "", false
+}
+
+type collectionCache struct {
+	CollectionSelector string
+	ItemFieldSelector  string
+}
+
+// RenderFilepath yields a map of one or multiple file paths based on path template. If template references a collection,
+// the output mapping will have all keys mapped to the corresponding TemplateContext with "Current" field set.
+//
+// Example: "{{ friends.name }}"" will be mapped as
+// ("Alice" => TemplateContext), where TemplateContext.Current is TemplateContext.Friends[0].
+// ("Bob" => TemplateContext), where TemplateContext.Current is TemplateContext.Friends[1].
+func (l *TemplateLoader) RenderFilepath(
+	rootCtx TemplateContext, pathTemplate string) (map[string]TemplateContext, error) {
+
+	var err error
+	var collectionSelector string
+	var collectionLength int
+	cache := make(map[string]collectionCache)
+
+	// replaceWithCurrent is a function that replaces all templated placeholders in pathTemplate,
+	// using idx as an offset in the collection, if collection references are used in pathTemplate.
+	//
+	// The template can only have one collection reference, but multiple collection item field references.
+	// For example, it can has {{friends.name}}_{{friends.age}} so the collection "friends" will be traversed once,
+	// and on each idx like friends[0], friends[1], ..., friends[idx] these placeholders will be replaced
+	// with "name" and "age" field values from the corresponding collection items.
+	replaceWithCurrent := func(idx int) (string, TemplateContext) {
+		var currentCtx TemplateContext
+		path := l.filepathTplRx.ReplaceAllStringFunc(pathTemplate, func(field string) string {
+			if cached, ok := cache[field]; ok {
+				// already parsed field, on previous iteration, and it's a collection
+				if item, found := rootCtx.
+					CurrentAt(cached.CollectionSelector, 0).
+					CurrentItem(cached.ItemFieldSelector); found {
+					return fmt.Sprintf("%v", item)
+				}
+				return ""
+			}
+			selector := strings.TrimPrefix(field, ".")
+			collection, itemField, ok := findCollectionPrefix(rootCtx, selector)
+			if ok {
+				// a collection prefix has been found
+				if len(collectionSelector) > 0 {
+					if collection != collectionSelector {
+						err = fmt.Errorf("multiple collections are not expected, first was: %s", collectionSelector)
+						return ""
+					}
+				} else {
+					collectionSelector = collection
+					collectionLength, _ = rootCtx.LengthOf(collection)
+					cache[field] = collectionCache{
+						CollectionSelector: collectionSelector,
+						ItemFieldSelector:  itemField,
+					}
+				}
+				currentCtx = rootCtx.CurrentAt(collection, idx)
+				if item, found := currentCtx.CurrentItem(itemField); found {
+					return fmt.Sprintf("%v", item)
+				}
+				return ""
+			}
+			if item, ok := rootCtx.Item(field); ok {
+				return fmt.Sprintf("%v", item)
+			}
+			return ""
+		})
+		if currentCtx == nil {
+			return path, rootCtx
+		}
+		return path, currentCtx
+	}
+	path, currentCtx := replaceWithCurrent(0)
+	resultMap := map[string]TemplateContext{
+		path: currentCtx,
+	}
+	if collectionLength > 1 {
+		// we have more items to traverse in collection
+		for idx := 1; idx < collectionLength; idx++ {
+			path, currentCtx = replaceWithCurrent(idx)
+			resultMap[path] = currentCtx
+		}
+	}
+	return resultMap, nil
 }
 
 type RenderFunc func(tpl *template.Template, source string) error
 
 func (l *TemplateLoader) RenderEachTemplate(mode TemplateMode, fn RenderFunc) error {
+	if mode == TemplateModeVerbatim {
+		err := errors.New("wrong mode: verbatim doesn't use template engin")
+		return err
+	}
 	for _, source := range l.sources[mode] {
 		if err := fn(l.templates[mode], source); err != nil {
 			return err
 		}
 	}
 	return nil
-	// buf := new(bytes.Buffer)
-	// if err := tpl.ExecuteTemplate(buf, v); err != nil {
-	// 	err = fmt.Errorf("RenderTemplate: execution error: %v", err)
-	// 	return nil, err
-	// }
-	// return buf.Bytes(), nil
 }

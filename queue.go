@@ -3,12 +3,12 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
 	humanize "github.com/dustin/go-humanize"
+	log "github.com/sirupsen/logrus"
 	"github.com/xlab/treeprint"
 )
 
@@ -32,23 +32,23 @@ func (q Queue) Exec() bool {
 	revertPrevious := func(qq Queue) {
 		for i := len(qq) - 1; i >= 0; i-- {
 			if err := qq[i].Revert(); err != nil {
-				log.Printf("Revert Action#%d failed: %v", i+1, err)
+				log.Warningf("revert Action#%d failed: %v", i+1, err)
 			} else {
-				log.Printf("Reverted Action#%d", i+1)
+				log.Infof("reverted Action#%d", i+1)
 			}
 		}
 	}
 	for i, action := range q {
-		log.Printf("Action#%d: %s", i+1, action.Comment())
+		log.Warningf("action#%d: %s", i+1, action.Comment())
 		f, err := action.Run()
 		if err != nil {
-			log.Printf("Action#%d error: %v", i+1, err)
+			log.Warningf("action#%d error: %v", i+1, err)
 			revertPrevious(qq)
 			return false
 		}
 		qq = append(qq, action)
 		if err := action.Finalize(f); err != nil {
-			log.Printf("Finalizer#%d error: %v", i+1, err)
+			log.Warningf("finalizer#%d error: %v", i+1, err)
 			revertPrevious(qq)
 			return false
 		}
@@ -75,7 +75,7 @@ func CheckDirAction(path string) QueueAction {
 			}
 			return nil, nil
 		},
-		comment: fmt.Sprintf("dir %s must exist", projectPath(path)),
+		comment: fmt.Sprintf("dir %s must exist", dstPath(path)),
 	}
 }
 
@@ -85,7 +85,7 @@ func NewDirAction(path string) QueueAction {
 			err := os.MkdirAll(path, 0755)
 			return nil, err
 		},
-		comment: fmt.Sprintf("new dir %s if not exists", projectPath(path)),
+		comment: fmt.Sprintf("new dir %s if not exists", dstPath(path)),
 		revert: func() error {
 			return os.Remove(path)
 		},
@@ -98,7 +98,7 @@ func CreateNewFileAction(path string, contents []byte) QueueAction {
 			return os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 		},
 		comment: fmt.Sprintf("new file %s size=%s (no overwrite)",
-			projectPath(path), contentSize(contents)),
+			dstPath(path), contentSize(contents)),
 		finalize: func(f *os.File) error {
 			if f == nil {
 				return nil
@@ -118,7 +118,7 @@ func OverwriteFileAction(path string, contents []byte) QueueAction {
 			return os.Create(path)
 		},
 		comment: fmt.Sprintf("overwrite file %s size=%s",
-			projectPath(path), contentSize(contents)),
+			dstPath(path), contentSize(contents)),
 		finalize: func(f *os.File) error {
 			if f == nil {
 				return nil
@@ -165,11 +165,11 @@ func (q *queueAction) Revert() error {
 }
 
 func contentSize(contents []byte) string {
-	return humanize.Bytes(len(contents))
+	return humanize.Bytes(uint64(len(contents)))
 }
 
-func projectPath(path string) string {
-	return filepath.Join("[project]", strings.TrimPrefix(path, *projectDir))
+func dstPath(path string) string {
+	return filepath.Join("[dst]", strings.TrimPrefix(path, *dstDir))
 }
 
 func flushBufferToFile(buf []byte, f *os.File) error {

@@ -3,7 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
@@ -31,27 +34,27 @@ type Cargo struct {
 }
 
 // LengthOf returns length of a collection specified by selector. If there is no
-// field matching selector, or its value is not indexable, it will return 0.
-func (c TemplateContext) LengthOf(selector string) int {
+// field matching selector, or its value is not indexable, it will return false.
+func (c TemplateContext) LengthOf(selector string) (int, bool) {
 	v, ok := structwalk.FieldValue(selector, c)
 	if !ok {
 		// no such field
-		return 0
+		return 0, false
 	}
 	collectionV := reflect.ValueOf(v)
 	collectionT := reflect.TypeOf(v)
 	switch collectionT.Kind() {
 	case reflect.Array, reflect.Slice, reflect.Map:
-		return collectionV.Len()
+		return collectionV.Len(), true
 	default:
-		return 0
+		return 0, false
 	}
 }
 
-// ItemAt returns a shallow copy of TemplateContext, with "Current" root field
+// CurrentAt returns a shallow copy of TemplateContext, with "Current" root field
 // set to the current item in the collection, at index idx. If there is no item,
 // or the collection is not indexable, it sets "Current" to nil.
-func (c TemplateContext) ItemAt(selector string, idx int) TemplateContext {
+func (c TemplateContext) CurrentAt(selector string, idx int) TemplateContext {
 	view := make(TemplateContext, len(c))
 	for k, v := range c {
 		view[k] = v
@@ -75,10 +78,14 @@ func (c TemplateContext) ItemAt(selector string, idx int) TemplateContext {
 			view["Current"] = v.Interface()
 			return view
 		}
-	default:
-		// not indexable
-		return view
 	}
+	// not indexable
+	return view
+}
+
+// CurrentItem returns the value of a matching field from Current context.
+func (c TemplateContext) CurrentItem(selector string) (interface{}, bool) {
+	return structwalk.FieldValue(selector, c["Current"])
 }
 
 // Item returns the value of a matching field from Template context.
@@ -89,7 +96,7 @@ func (c TemplateContext) Item(selector string) (interface{}, bool) {
 // LoadFromJSON parses a JSON source and builds context from that, setting it to
 // the root field of context specified by name.
 func (c TemplateContext) LoadFromJSON(name string, data []byte) error {
-	var fields map[string]interface{}
+	var fields interface{}
 	if existingFields, ok := c[name]; ok {
 		fields = existingFields
 	}
@@ -103,12 +110,40 @@ func (c TemplateContext) LoadFromJSON(name string, data []byte) error {
 // LoadFromYAML parses a YAML source and builds context from that, setting it to
 // the root field of context specified by name.
 func (c TemplateContext) LoadFromYAML(name string, data []byte) error {
-	var fields map[string]interface{}
+	var fields interface{}
 	if existingFields, ok := c[name]; ok {
 		fields = existingFields
 	}
 	if err := yaml.Unmarshal(data, &fields); err != nil {
 		return err
 	}
+	return nil
+}
+
+// LoadEnvVars fills context "ENV" environment variables map.
+func (c TemplateContext) LoadEnvVars() error {
+	pairs := os.Environ()
+	envVars := make(map[string]string)
+	for _, pair := range pairs {
+		nameVal := strings.Split(pair, "=")
+		if len(nameVal) == 2 {
+			envVars[nameVal[0]] = nameVal[1]
+		}
+	}
+	c["ENV"] = envVars
+	return nil
+}
+
+// LoadOsVars fills context "OS" with some variables from OS.
+func (c TemplateContext) LoadOsVars() error {
+	osVars := make(map[string]string)
+	osVars["PathSeparator"] = string(os.PathSeparator)
+	osVars["PathListSeparator"] = string(os.PathListSeparator)
+	osVars["WorkDir"], _ = os.Getwd()
+	osVars["Hostname"], _ = os.Hostname()
+	osVars["Executable"], _ = os.Executable()
+	osVars["ARCH"] = runtime.GOARCH
+	osVars["OS"] = runtime.GOOS
+	c["OS"] = osVars
 	return nil
 }
