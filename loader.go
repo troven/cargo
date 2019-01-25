@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -9,13 +8,15 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"text/template"
 
 	log "github.com/sirupsen/logrus"
 )
 
 type TemplateLoader struct {
-	opts    *TemplateLoaderOptions
-	sources [TemplateMode][]string
+	opts      *TemplateLoaderOptions
+	sources   [TemplateMode][]string
+	templates map[TemplateMode]*template.Template
 
 	// filepathTplRx contains a precompiled Rx for replacing template tags
 	// in file paths, token delims must be quoted before compiling such Rx.
@@ -55,8 +56,9 @@ func checkTemplateLoaderOptions(opts *TemplateLoaderOptions) *TemplateLoaderOpti
 // categorized into rendiring modes [single, collection] based on name prefix.
 func NewTemplateLoader(paths []string, opts *TemplateLoaderOptions) (*TemplateLoader, error) {
 	loader := &TemplateLoader{
-		opts:    checkTemplateLoaderOptions(opts),
-		sources: make([TemplateMode][]string, 2),
+		opts:      checkTemplateLoaderOptions(opts),
+		sources:   make([TemplateMode][]string, 2),
+		templates: make(map[TemplateMode]*template.Template, 2),
 	}
 	seen := make(map[string]struct{})
 	for _, path := range paths {
@@ -96,6 +98,20 @@ func NewTemplateLoader(paths []string, opts *TemplateLoaderOptions) (*TemplateLo
 	}
 	sort.Strings(loader.sources[TemplateModeSingle])
 	sort.Strings(loader.sources[TemplateModeCollection])
+
+	if tpl, err := template.ParseFiles(loader.sources[TemplateModeSingle]...); err != nil {
+		err = fmt.Errorf("template parse error: %v", err)
+		return nil, err
+	} else {
+		loader.templates[TemplateModeSingle] = tpl
+	}
+	if tpl, err := template.ParseFiles(loader.sources[TemplateModeCollection]...); err != nil {
+		err = fmt.Errorf("template parse error: %v", err)
+		return nil, err
+	} else {
+		loader.templates[TemplateModeCollection] = tpl
+	}
+
 	loader.filepathTplRx = regexp.MustCompile(
 		regexp.QuoteMeta(loader.opts.LeftDelim) +
 			`\s*(?P<field>\.?[a-zA-Z0-9_.]+)\s*` +
@@ -110,48 +126,52 @@ func (l *TemplateLoader) addFileSource(path string) {
 	dir := filepath.Dir(path)
 	mode := TemplateCollection
 	if strings.HasPrefix(name, l.opts.ModePrefix) {
-		name = strings.TrimPrefix(name, l.opts.ModePrefix)
 		path = filepath.Join(dir, name)
 		mode = TemplateSingle
 	}
 	l.sources[mode] = append(l.sources[mode], path)
 }
 
-func (l *TemplateLoader) RenderFilepathAt(c *TemplateContext, pathTemplate string, idx int) (string, error) {
-	l.filepathTplRx.ReplaceAllStringFunc(pathTemplate, func(field string) string {
+func (l *TemplateLoader) RenderFilepath(c TemplateContext, pathTemplate string) (string, error) {
+	var err error
+	var collectionField string
+	result := l.filepathTplRx.ReplaceAllStringFunc(pathTemplate, func(field string) string {
+		field = strings.TrimPrefix(field, ".")
 		if itemsLength := c.LengthOf(field); itemsLength > 0 {
-			// TODO
+			if len(collectionField) > 0 {
+				err = fmt.Errorf("multiple collections are not expected at the same time, first was: %s", collectionField)
+				return ""
+			} else {
+				collectionField = field
+			}
+			current, ok := c["Current"]
+			if !ok {
+				err = errors.New("field points to a collection, but current item is not set")
+				return ""
+			}
+			return fmt.Sprintf("%v", current)
 		}
+		v, ok := c.Item(field)
 	})
-}
-
-func (l *TemplateLoader) RenderFilepath(c *TemplateContext, pathTemplate string) (string, error) {
-	l.filepathTplRx.ReplaceAllStringFunc(pathTemplate, func(field string) string {
-		if itemsLength := c.LengthOf(field); itemsLength > 0 {
-			err := errors.New("field points to a collection, must be rendered it using RenderFilepathAt")
-			return "", err
-		}
-	})
-}
-
-func (l *TemplateLoader) MustRenderTemplate(name string, v interface{}) []byte {
-	data, err := RenderTemplate(name, v)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
-	return data
+	return result, nil
 }
 
-func (l *TemplateLoader) RenderTemplate(name string, v interface{}) ([]byte, error) {
-	tpl, ok := Templates[name]
-	if !ok {
-		err := fmt.Errorf("RenderTemplate: no such template: %s", name)
-		return nil, err
+type RenderFunc func(tpl *template.Template, source string) error
+
+func (l *TemplateLoader) RenderEachTemplate(mode TemplateMode, fn RenderFunc) error {
+	for _, source := range l.sources[mode] {
+		if err := fn(l.templates[mode], source); err != nil {
+			return err
+		}
 	}
-	buf := new(bytes.Buffer)
-	if err := tpl.ExecuteTemplate(buf, "base", v); err != nil {
-		err = fmt.Errorf("RenderTemplate: execution error: %v", err)
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return nil
+	// buf := new(bytes.Buffer)
+	// if err := tpl.ExecuteTemplate(buf, v); err != nil {
+	// 	err = fmt.Errorf("RenderTemplate: execution error: %v", err)
+	// 	return nil, err
+	// }
+	// return buf.Bytes(), nil
 }

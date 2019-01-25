@@ -2,10 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
@@ -26,11 +24,14 @@ func NewTemplateContext() TemplateContext {
 	}
 }
 
+// Cargo keeps context fields related to the renderer.
 type Cargo struct {
 	Version          string
 	ContextCreatedAt time.Time
 }
 
+// LengthOf returns length of a collection specified by selector. If there is no
+// field matching selector, or its value is not indexable, it will return 0.
 func (c TemplateContext) LengthOf(selector string) int {
 	v, ok := structwalk.FieldValue(selector, c)
 	if !ok {
@@ -47,12 +48,19 @@ func (c TemplateContext) LengthOf(selector string) int {
 	}
 }
 
+// ItemAt returns a shallow copy of TemplateContext, with "Current" root field
+// set to the current item in the collection, at index idx. If there is no item,
+// or the collection is not indexable, it sets "Current" to nil.
 func (c TemplateContext) ItemAt(selector string, idx int) TemplateContext {
+	view := make(TemplateContext, len(c))
+	for k, v := range c {
+		view[k] = v
+		view["Current"] = nil
+	}
 	v, ok := structwalk.FieldValue(selector, c)
 	if !ok {
 		// no such field
-		c["Current"] = nil
-		return c
+		return view
 	}
 	collectionV := reflect.ValueOf(v)
 	collectionT := reflect.TypeOf(v)
@@ -60,47 +68,47 @@ func (c TemplateContext) ItemAt(selector string, idx int) TemplateContext {
 	case reflect.Array, reflect.Slice, reflect.Map:
 		if idx < 0 || idx >= collectionV.Len() {
 			// not indexable - out of bounds
-			c["Current"] = nil
-			return c
+			return view
 		}
 		if v := collectionV.Index(idx); v.CanInterface() {
 			// set the value index is pointing to
-			c["Current"] = v.Interface()
-			return c
+			view["Current"] = v.Interface()
+			return view
 		}
 	default:
 		// not indexable
-		c["Current"] = nil
-		return c
+		return view
 	}
 }
 
-func (c TemplateContext) LoadFromJSON(data []byte) error {
+// Item returns the value of a matching field from Template context.
+func (c TemplateContext) Item(selector string) (interface{}, bool) {
+	return structwalk.FieldValue(selector, c)
+}
+
+// LoadFromJSON parses a JSON source and builds context from that, setting it to
+// the root field of context specified by name.
+func (c TemplateContext) LoadFromJSON(name string, data []byte) error {
 	var fields map[string]interface{}
+	if existingFields, ok := c[name]; ok {
+		fields = existingFields
+	}
 	if err := json.Unmarshal(data, &fields); err != nil {
 		return err
 	}
-	for name, v := range fields {
-		if strings.ToLower(name) == "cargo" || stings.ToLower(name) == "current" {
-			err := errors.New("root field names 'cargo' and 'current' are reserved")
-			return err
-		}
-		c[name] = v
-	}
+	c[name] = fields
 	return nil
 }
 
-func (c TemplateContext) LoadFromYAML(data []byte) error {
+// LoadFromYAML parses a YAML source and builds context from that, setting it to
+// the root field of context specified by name.
+func (c TemplateContext) LoadFromYAML(name string, data []byte) error {
 	var fields map[string]interface{}
+	if existingFields, ok := c[name]; ok {
+		fields = existingFields
+	}
 	if err := yaml.Unmarshal(data, &fields); err != nil {
 		return err
-	}
-	for name, v := range fields {
-		if strings.ToLower(name) == "cargo" || stings.ToLower(name) == "current" {
-			err := errors.New("root field names 'cargo' and 'current' are reserved")
-			return err
-		}
-		c[name] = v
 	}
 	return nil
 }
