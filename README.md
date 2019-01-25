@@ -29,24 +29,25 @@ As we iterate over the collection, we should add it the Current context.
 
 We should load ENV and OS vars into the global context too.
 
-And our twist -
+And our twist ... if the contents of a templated file resolves to the empty string - then it is not output.
 
-
-if the contents of a templated file resolves to the empty string - then it is not output.
+#### Command Line Example
 
 The tool will need a simple CLI:
 
+```
 cargo ./site ./published
+```
 
 with some options:
-
+```
 --[Context Name]=<yaml/json file> # Values=helm-chart-values.yaml should render simple Helm templates
 --delimiters={{}} # change to a matching set of delimiters for contents template interpolation
 --prefix=$ # change the singular prefix to $ instead of _
 --dry-run # validate only, don't output
 --help
 --version
-
+```
 For reference, look at:
 
 https://golang.org/pkg/text/template/
