@@ -19,9 +19,13 @@ import (
 type TemplateContext map[string]interface{}
 
 func NewTemplateContext() TemplateContext {
+	ver := version.Version
+	if len(version.GitCommit) > 0 {
+		ver = fmt.Sprintf("%s (commmit %s)", version.Version, version.GitCommit)
+	}
 	return TemplateContext{
 		"Cargo": &Cargo{
-			Version:          fmt.Sprintf("%s (commmit %s)", version.Version, version.GitCommit),
+			Version:          ver,
 			ContextCreatedAt: time.Now(),
 		},
 	}
@@ -44,16 +48,19 @@ func (c TemplateContext) LengthOf(selector string) (int, bool) {
 	collectionV := reflect.ValueOf(v)
 	collectionT := reflect.TypeOf(v)
 	switch collectionT.Kind() {
-	case reflect.Array, reflect.Slice, reflect.Map:
+	case reflect.Array, reflect.Slice:
 		return collectionV.Len(), true
-	default:
+	case reflect.Map:
+		// We only support slices and arrays as collections,
+		// because maps resembles an object and may confuse template resolver.
 		return 0, false
 	}
+	return 0, false
 }
 
 // CurrentAt returns a shallow copy of TemplateContext, with "Current" root field
 // set to the current item in the collection, at index idx. If there is no item,
-// or the collection is not indexable, it sets "Current" to nil.
+// or it is not indexable, sets "Current" to nil.
 func (c TemplateContext) CurrentAt(selector string, idx int) TemplateContext {
 	view := make(TemplateContext, len(c))
 	for k, v := range c {
@@ -68,7 +75,7 @@ func (c TemplateContext) CurrentAt(selector string, idx int) TemplateContext {
 	collectionV := reflect.ValueOf(v)
 	collectionT := reflect.TypeOf(v)
 	switch collectionT.Kind() {
-	case reflect.Array, reflect.Slice, reflect.Map:
+	case reflect.Array, reflect.Slice:
 		if idx < 0 || idx >= collectionV.Len() {
 			// not indexable - out of bounds
 			return view
@@ -78,6 +85,20 @@ func (c TemplateContext) CurrentAt(selector string, idx int) TemplateContext {
 			view["Current"] = v.Interface()
 			return view
 		}
+	case reflect.Map:
+		// We only support slices and arrays as collections,
+		// because maps resembles an object and may confuse template resolver.
+		return view
+		// mapKeys := collectionV.MapKeys()
+		// if idx < 0 || idx >= len(mapKeys) {
+		// 	// not indexable - out of bounds
+		// 	return view
+		// }
+		// if v := collectionV.MapIndex(mapKeys[idx]); v.CanInterface() {
+		// 	// set the value index is pointing to
+		// 	view["Current"] = v.Interface()
+		// 	return view
+		// }
 	}
 	// not indexable
 	return view
@@ -86,6 +107,27 @@ func (c TemplateContext) CurrentAt(selector string, idx int) TemplateContext {
 // CurrentItem returns the value of a matching field from Current context.
 func (c TemplateContext) CurrentItem(selector string) (interface{}, bool) {
 	return structwalk.FieldValue(selector, c["Current"])
+}
+
+// CurrentCollection returns a shallow copy of TemplateContext, with "Current" root field
+// set to the collection that matches given selector. If there is no such collection,
+// or it is not indexable, sets "Current" to nil.
+func (c TemplateContext) CurrentCollection(selector string) TemplateContext {
+	view := make(TemplateContext, len(c))
+	for k, v := range c {
+		view[k] = v
+		view["Current"] = nil
+	}
+	v, ok := structwalk.FieldValue(selector, c)
+	if !ok {
+		// no such field
+		return view
+	}
+	switch reflect.TypeOf(v).Kind() {
+	case reflect.Array, reflect.Slice:
+		view["Current"] = v
+	}
+	return view
 }
 
 // Item returns the value of a matching field from Template context.
@@ -117,23 +159,21 @@ func (c TemplateContext) LoadFromYAML(name string, data []byte) error {
 	if err := yaml.Unmarshal(data, &fields); err != nil {
 		return err
 	}
+	c[name] = fields
 	return nil
 }
 
-// LoadEnvVars fills context "ENV" environment variables map.
+// LoadEnvVars fills context "Env" environment variables map.
 func (c TemplateContext) LoadEnvVars() error {
 	pairs := os.Environ()
 	envVars := make(map[string]string)
 	for _, pair := range pairs {
 		nameVal := strings.Split(pair, "=")
 		if len(nameVal) == 2 {
-			if nameVal[1] == "<no value>" {
-				nameVal[1] = ""
-			}
 			envVars[nameVal[0]] = nameVal[1]
 		}
 	}
-	c["ENV"] = envVars
+	c["Env"] = envVars
 	return nil
 }
 

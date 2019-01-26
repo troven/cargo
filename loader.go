@@ -117,30 +117,35 @@ func NewTemplateLoader(paths []string, opts *TemplateLoaderOptions) (*TemplateLo
 
 	singleSources := loader.sources[TemplateModeSingle]
 	for _, source := range singleSources {
-		tpl, err := template.New(source).ParseFiles(source)
-		if err != nil {
-			err = fmt.Errorf("template parse error: %v", err)
-			return nil, err
-		}
 		set := loader.templates[TemplateModeSingle]
 		if set == nil {
 			set = make(map[string]*template.Template, len(singleSources))
 			loader.templates[TemplateModeSingle] = set
+		}
+
+		tpl, err := template.New(source).ParseFiles(source)
+		if err != nil {
+			err = fmt.Errorf("template parse error: %v", err)
+			return nil, err
 		}
 		set[source] = tpl
 	}
 
 	collectionSources := loader.sources[TemplateModeCollection]
 	for _, source := range collectionSources {
-		tpl, err := template.New(source).ParseFiles(source)
-		if err != nil {
-			err = fmt.Errorf("template parse error: %v", err)
-			return nil, err
-		}
 		set := loader.templates[TemplateModeCollection]
 		if set == nil {
 			set = make(map[string]*template.Template, len(collectionSources))
 			loader.templates[TemplateModeCollection] = set
+		}
+
+		tpl, err := template.New(source).ParseFiles(source)
+		if isBinaryContent(err) {
+			set[source] = nil
+			continue
+		} else if err != nil {
+			err = fmt.Errorf("template parse error: %v", err)
+			return nil, err
 		}
 		set[source] = tpl
 	}
@@ -208,7 +213,7 @@ type collectionCache struct {
 // ("Alice" => TemplateContext), where TemplateContext.Current is TemplateContext.Friends[0].
 // ("Bob" => TemplateContext), where TemplateContext.Current is TemplateContext.Friends[1].
 func (l *TemplateLoader) RenderFilepath(
-	rootCtx TemplateContext, pathTemplate string) (map[string]TemplateContext, error) {
+	rootContext TemplateContext, pathTemplate string) (map[string]TemplateContext, error) {
 
 	var err error
 	var collectionSelector string
@@ -222,64 +227,92 @@ func (l *TemplateLoader) RenderFilepath(
 	// For example, it can has {{friends.name}}_{{friends.age}} so the collection "friends" will be traversed once,
 	// and on each idx like friends[0], friends[1], ..., friends[idx] these placeholders will be replaced
 	// with "name" and "age" field values from the corresponding collection items.
-	replaceWithCurrent := func(idx int) (string, TemplateContext) {
-		var currentCtx TemplateContext
+	replaceWithCurrent := func(idx int) (string, TemplateContext, error) {
+		var currentContext TemplateContext
+		var currentError error
 		path := l.filepathTplRx.ReplaceAllStringFunc(pathTemplate, func(field string) string {
+			field = strings.TrimPrefix(field, l.opts.LeftDelim)
+			field = strings.TrimSuffix(field, l.opts.RightDelim)
+			field = strings.TrimSpace(field)
+
 			if cached, ok := cache[field]; ok {
 				// already parsed field, on previous iteration, and it's a collection
-				if item, found := rootCtx.
-					CurrentAt(cached.CollectionSelector, 0).
-					CurrentItem(cached.ItemFieldSelector); found {
+				currentContext = rootContext.CurrentAt(cached.CollectionSelector, idx)
+				if item, found := currentContext.CurrentItem(cached.ItemFieldSelector); found {
 					return fmt.Sprintf("%v", item)
 				}
 				return ""
 			}
 			selector := strings.TrimPrefix(field, ".")
-			collection, itemField, ok := findCollectionPrefix(rootCtx, selector)
+			collection, itemField, ok := findCollectionPrefix(rootContext, selector)
 			if ok {
 				// a collection prefix has been found
 				if len(collectionSelector) > 0 {
 					if collection != collectionSelector {
-						err = fmt.Errorf("multiple collections are not expected, first was: %s", collectionSelector)
+						currentError = fmt.Errorf(
+							"multiple collections are not expected, first was: %s",
+							collectionSelector)
 						return ""
 					}
 				} else {
 					collectionSelector = collection
-					collectionLength, _ = rootCtx.LengthOf(collection)
+					collectionLength, _ = rootContext.LengthOf(collection)
 					cache[field] = collectionCache{
 						CollectionSelector: collectionSelector,
 						ItemFieldSelector:  itemField,
 					}
 				}
-				currentCtx = rootCtx.CurrentAt(collection, idx)
-				if item, found := currentCtx.CurrentItem(itemField); found {
-					return fmt.Sprintf("%v", item)
+				if len(itemField) > 0 {
+					currentContext = rootContext.CurrentAt(collection, idx)
+					if item, found := currentContext.CurrentItem(itemField); found {
+						return fmt.Sprintf("%v", item)
+					}
+				} else {
+					currentContext = rootContext.CurrentCollection(collection)
+					currentError = ErrIterStop
+					return fmt.Sprintf("%s", collection)
 				}
+				log.WithField("field", field).Warningln("filename template field is not resolved")
 				return ""
 			}
-			if item, ok := rootCtx.Item(field); ok {
+			if item, ok := rootContext.Item(field); ok {
 				return fmt.Sprintf("%v", item)
 			}
+			log.WithField("field", field).Warningln("filename template field is not resolved")
 			return ""
 		})
-		if currentCtx == nil {
-			return path, rootCtx
+		if currentContext == nil {
+			return path, rootContext, currentError
 		}
-		return path, currentCtx
+		return path, currentContext, currentError
 	}
-	path, currentCtx := replaceWithCurrent(0)
+	path, currentContext, err := replaceWithCurrent(0)
+	if err == ErrIterStop {
+		resultMap := map[string]TemplateContext{
+			path: currentContext,
+		}
+		return resultMap, nil
+	} else if err != nil {
+		return nil, err
+	}
+
 	resultMap := map[string]TemplateContext{
-		path: currentCtx,
+		path: currentContext,
 	}
 	if collectionLength > 1 {
 		// we have more items to traverse in collection
 		for idx := 1; idx < collectionLength; idx++ {
-			path, currentCtx = replaceWithCurrent(idx)
-			resultMap[path] = currentCtx
+			path, currentContext, err = replaceWithCurrent(idx)
+			if err != nil {
+				return nil, err
+			}
+			resultMap[path] = currentContext
 		}
 	}
 	return resultMap, nil
 }
+
+var ErrIterStop = errors.New("stop iterating")
 
 type SourceFunc func(source string) error
 
@@ -305,4 +338,14 @@ func (l *TemplateLoader) RenderEachTemplate(mode TemplateMode, fn RenderFunc) er
 		}
 	}
 	return nil
+}
+
+func isBinaryContent(err error) bool {
+	if err == nil {
+		return false
+	}
+	if strings.Contains(err.Error(), "unexpected unrecognized character") {
+		return true
+	}
+	return false
 }
