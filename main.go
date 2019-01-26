@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/jawher/mow.cli"
-	"github.com/onrik/logrus/filename"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -29,7 +28,10 @@ var dstDir = app.StringArg("DST", "published/", "Specify destination dir for you
 func main() {
 	// app.Spec = "SRC [DST]"
 	app.Before = func() {
-		log.AddHook(filename.NewHook())
+		if *logLevel == 5 {
+			log.SetReportCaller(true)
+		}
+		// log.AddHook(filename.NewHook())
 		log.SetLevel(log.Level(*logLevel))
 	}
 	app.Action = mainCmd
@@ -120,7 +122,7 @@ func mainCmd() {
 		if info, err := os.Stat(target); os.IsNotExist(err) {
 			singularActions = append(singularActions, CreateNewFileAction(target, contents))
 		} else if info.IsDir() {
-			log.Fatalln("target is dir:", target)
+			log.Fatalln("target is a directory:", target)
 		} else {
 			singularActions = append(singularActions, OverwriteFileAction(target, contents))
 		}
@@ -143,8 +145,7 @@ func mainCmd() {
 	actionQueue = append(actionQueue, singularActions...)
 	ts := time.Now()
 	if !actionQueue.Exec() {
-		log.Infoln("failed in", time.Since(ts))
-		return
+		log.Fatalln("failed in", time.Since(ts))
 	}
 	log.Infoln("done in", time.Since(ts))
 }

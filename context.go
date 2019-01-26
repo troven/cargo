@@ -127,6 +127,9 @@ func (c TemplateContext) LoadEnvVars() error {
 	for _, pair := range pairs {
 		nameVal := strings.Split(pair, "=")
 		if len(nameVal) == 2 {
+			if nameVal[1] == "<no value>" {
+				nameVal[1] = ""
+			}
 			envVars[nameVal[0]] = nameVal[1]
 		}
 	}

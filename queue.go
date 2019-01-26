@@ -37,23 +37,23 @@ func (q Queue) Exec() bool {
 	revertPrevious := func(qq Queue) {
 		for i := len(qq) - 1; i >= 0; i-- {
 			if err := qq[i].Revert(); err != nil {
-				log.Warningf("revert Action#%d failed: %v", i+1, err)
+				log.Errorf("revert Action#%d failed: %v", i+1, err)
 			} else {
-				log.Infof("reverted Action#%d", i+1)
+				log.Warningf("reverted Action#%d", i+1)
 			}
 		}
 	}
 	for i, action := range q {
-		log.Warningf("action#%d: %s", i+1, action.Comment())
+		log.Infof("action#%d: %s", i+1, action.Comment())
 		f, err := action.Run()
 		if err != nil {
-			log.Warningf("action#%d error: %v", i+1, err)
+			log.Errorf("action#%d error: %v", i+1, err)
 			revertPrevious(qq)
 			return false
 		}
 		qq = append(qq, action)
 		if err := action.Finalize(f); err != nil {
-			log.Warningf("finalizer#%d error: %v", i+1, err)
+			log.Errorf("finalizer#%d error: %v", i+1, err)
 			revertPrevious(qq)
 			return false
 		}
@@ -97,9 +97,25 @@ func NewDirAction(path string) QueueAction {
 	}
 }
 
+func mkDirFor(path string) error {
+	targetDir := filepath.Dir(path)
+	if info, err := os.Stat(targetDir); os.IsNotExist(err) {
+		if err = os.MkdirAll(targetDir, 0755); err != nil {
+			return err
+		}
+	} else if !info.IsDir() {
+		err := fmt.Errorf("target directory is not a directory: %s", targetDir)
+		return err
+	}
+	return nil
+}
+
 func CreateNewFileAction(path string, contents []byte) QueueAction {
 	return &queueAction{
 		action: func() (f *os.File, err error) {
+			if err := mkDirFor(path); err != nil {
+				return nil, err
+			}
 			return os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 		},
 		comment: fmt.Sprintf("new file %s size=%s (no overwrite)",
@@ -120,6 +136,9 @@ func CreateNewFileAction(path string, contents []byte) QueueAction {
 func OverwriteFileAction(path string, contents []byte) QueueAction {
 	return &queueAction{
 		action: func() (f *os.File, err error) {
+			if err := mkDirFor(path); err != nil {
+				return nil, err
+			}
 			return os.Create(path)
 		},
 		comment: fmt.Sprintf("overwrite file %s size=%s",
@@ -140,6 +159,9 @@ func OverwriteFileAction(path string, contents []byte) QueueAction {
 func CopyFileAction(dst, src string) QueueAction {
 	return &queueAction{
 		action: func() (f *os.File, err error) {
+			if err := mkDirFor(dst); err != nil {
+				return nil, err
+			}
 			return os.Create(dst)
 		},
 		comment: fmt.Sprintf("copy file %s", dstPath(dst)),
