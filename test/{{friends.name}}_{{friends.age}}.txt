@@ -1,1 +1,1 @@
-Kek! Happy Birthday to {{ .Current.Name }}, aged {{ .Current.Age }}!
+Hello! Happy Birthday to {{ .Current.Name }}, aged {{ .Current.Age }}!

@@ -4,6 +4,7 @@ Hello! This template has been compiled on {{ .OS.OS }}-{{ .OS.Arch }} using {{ .
 
 I have some Env variables:
 
-* {{ .ENV.FOO_BAR }} exported as `ENV_FOO_BAR`
+* {{ .Env.FOO_BAR }} exported as `FOO_BAR`
+* {{ .Env.PWD }}
 
 Also context args such as {{ .App.Foo }} and {{ .App.Bar }}. And collections, see other files.

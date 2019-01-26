@@ -1,5 +1,5 @@
 Friend List:
 
-{{ range .Current }}
+{{ range .Current -}}
 	* {{ .Name }}
-{{ end }}
+{{ end -}}
