@@ -1,7 +1,7 @@
 all:
 
 install:
-	go install github.com/troven/cargo
+	go install github.com/troven/cargo/cmd/cargo
 
 test: export FOO_BAR=kek
 test:

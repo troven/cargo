@@ -8,7 +8,7 @@ The documentation is WIP and this description will be changed much.
 ### Installation
 
 ```
-go get -u github.com/troven/cargo
+go get -u github.com/troven/cargo/cmd/cargo
 ```
 
 ### Usage
