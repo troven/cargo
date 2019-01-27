@@ -63,6 +63,11 @@ The Cargo key/value contains the "manifest" - the list of "from" folders that ar
             email: "cto@troven.co"
         description: my first example package # free text
         version: 0.0.1 # mandatory semver
+        partials: # preloaded partials/templates
+            page:
+                path: ./src/templates/page.html # no need for _
+            product:
+                path: ./src/templates/product.xml
         manifest: # maps names to folders
             abc:
                 from: "./src/abc" # relative path in package
@@ -101,7 +106,20 @@ When manfiests have overlapping destinations conflicting files - those last in t
 
 It was the deliberate use of "." taht forced the overwrite behaviour in the example above.
 
+ROADMAP
+-------
 
+1) Initil PoC v0.1.0
+2) cargo run v0.2.0
+3) Use Cargo.yaml if no context found - use as top-level Context v0.3.0
+4) Cargo.partials - reference from template files v0.4.0
+5) cargo install to install from Cargo.manifest  v0.5.0
+6) cargo package - into tarball  v0.6.0
+7) repo add - to download packages  v0.7.0
+8) repo index / refresh / search  v0.8.0
+9) feature freeze
+10) training / documentation    v0.9.0
+11) after UAT v1.0.0
 
 
 
