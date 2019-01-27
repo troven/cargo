@@ -117,9 +117,8 @@ ROADMAP
 6) cargo package - into tarball  v0.6.0
 7) repo add - to download packages  v0.7.0
 8) repo index / refresh / search  v0.8.0
-9) feature freeze
-10) training / documentation    v0.9.0
-11) after UAT v1.0.0
+9) training / documentation    v0.9.0
+10) UAT v1.0.0
 
 
 
