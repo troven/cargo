@@ -62,6 +62,10 @@ Start your first Cargo run
 cargo run --context App=test/app_context.json --context Friends=test/friends_context.yaml test/ published/
 ```
 
+### Creating templates
+
+Templates are quite simple to create. You can see lots of examples in the ./test/ folder. Or [learn more here](Templates.md)
+
 ### Run test cases
 Use `make test` to check everything is working smoothly:
 
