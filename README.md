@@ -67,7 +67,7 @@ Use `make test` to check everything is working smoothly:
 
 ```
 $ make test
-cargo \
+cargo run\
         --context App=test/app_context.json \
         --context Friends=test/friends_context.yaml \
         test/ published/
