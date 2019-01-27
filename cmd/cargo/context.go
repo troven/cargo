@@ -21,7 +21,7 @@ type TemplateContext map[string]interface{}
 func NewTemplateContext() TemplateContext {
 	ver := version.Version
 	if len(version.GitCommit) > 0 {
-		ver = fmt.Sprintf("%s (commmit %s)", version.Version, version.GitCommit)
+		ver = fmt.Sprintf("%s (commit %s)", version.Version, version.GitCommit)
 	}
 	return TemplateContext{
 		"Cargo": &Cargo{
