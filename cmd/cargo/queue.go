@@ -68,7 +68,7 @@ type QueueAction interface {
 	Revert() error
 }
 
-func CheckDirAction(path string) QueueAction {
+func CheckDirAction(dstDir, path string) QueueAction {
 	return &queueAction{
 		action: func() (*os.File, error) {
 			info, err := os.Stat(path)
@@ -80,17 +80,17 @@ func CheckDirAction(path string) QueueAction {
 			}
 			return nil, nil
 		},
-		comment: fmt.Sprintf("dir %s must exist", dstPath(path)),
+		comment: fmt.Sprintf("dir %s must exist", dstPath(dstDir, path)),
 	}
 }
 
-func NewDirAction(path string) QueueAction {
+func NewDirAction(dstDir, path string) QueueAction {
 	return &queueAction{
 		action: func() (*os.File, error) {
 			err := os.MkdirAll(path, 0755)
 			return nil, err
 		},
-		comment: fmt.Sprintf("new dir %s if not exists", dstPath(path)),
+		comment: fmt.Sprintf("new dir %s if not exists", dstPath(dstDir, path)),
 		revert: func() error {
 			return os.Remove(path)
 		},
@@ -110,7 +110,7 @@ func mkDirFor(path string) error {
 	return nil
 }
 
-func CreateNewFileAction(path string, contents []byte) QueueAction {
+func CreateNewFileAction(dstDir, path string, contents []byte) QueueAction {
 	return &queueAction{
 		action: func() (f *os.File, err error) {
 			if err := mkDirFor(path); err != nil {
@@ -119,7 +119,7 @@ func CreateNewFileAction(path string, contents []byte) QueueAction {
 			return os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 		},
 		comment: fmt.Sprintf("new file %s size=%s (no overwrite)",
-			dstPath(path), contentSize(contents)),
+			dstPath(dstDir, path), contentSize(contents)),
 		finalize: func(f *os.File) error {
 			if f == nil {
 				return nil
@@ -133,7 +133,7 @@ func CreateNewFileAction(path string, contents []byte) QueueAction {
 	}
 }
 
-func OverwriteFileAction(path string, contents []byte) QueueAction {
+func OverwriteFileAction(dstDir, path string, contents []byte) QueueAction {
 	return &queueAction{
 		action: func() (f *os.File, err error) {
 			if err := mkDirFor(path); err != nil {
@@ -142,7 +142,7 @@ func OverwriteFileAction(path string, contents []byte) QueueAction {
 			return os.Create(path)
 		},
 		comment: fmt.Sprintf("overwrite file %s size=%s",
-			dstPath(path), contentSize(contents)),
+			dstPath(dstDir, path), contentSize(contents)),
 		finalize: func(f *os.File) error {
 			if f == nil {
 				return nil
@@ -156,7 +156,7 @@ func OverwriteFileAction(path string, contents []byte) QueueAction {
 	}
 }
 
-func CopyFileAction(dst, src string) QueueAction {
+func CopyFileAction(dstDir, dst, src string) QueueAction {
 	return &queueAction{
 		action: func() (f *os.File, err error) {
 			if err := mkDirFor(dst); err != nil {
@@ -164,7 +164,7 @@ func CopyFileAction(dst, src string) QueueAction {
 			}
 			return os.Create(dst)
 		},
-		comment: fmt.Sprintf("copy file %s", dstPath(dst)),
+		comment: fmt.Sprintf("copy file %s", dstPath(dstDir, dst)),
 		finalize: func(dstFile *os.File) error {
 			if dstFile == nil {
 				return nil
@@ -218,8 +218,8 @@ func contentSize(contents []byte) string {
 	return humanize.Bytes(uint64(len(contents)))
 }
 
-func dstPath(path string) string {
-	return filepath.Join("[dst]", strings.TrimPrefix(path, *dstDir))
+func dstPath(dstDir, path string) string {
+	return filepath.Join("[dst]", strings.TrimPrefix(path, dstDir))
 }
 
 func copyFileToFile(dst, src *os.File) error {
