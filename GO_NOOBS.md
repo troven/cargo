@@ -1,4 +1,6 @@
-## First time using Go
+## First time using Go / Cargo
+
+<img src="docs/cargo.png" width="300px" />
 
 #### For OS X:
 
