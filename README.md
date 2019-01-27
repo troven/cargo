@@ -2,8 +2,9 @@
 
 <img src="docs/cargo.png" width="300px" />
 
-Cargo is a simple static site builder. It works by processing a nested folder of files and generating new files and folders.
-The documentation is WIP and this description will be changed much.
+Cargo is a tiny static file generator written in golang for elegance, efficiency and relevance. 
+
+It works by processing a nested folder of files and generating new files and folders.
 
 ### Installation
 
@@ -11,14 +12,18 @@ The documentation is WIP and this description will be changed much.
 go get -u github.com/troven/cargo/cmd/cargo
 ```
 
+Doh! Not a golang ninja? [start here](GO_NOOBS.md)
+
 ### Usage
 
 ```
 $ cargo -h
 
-Usage: cargo [OPTIONS] SRC [DST]
+Usage: cargo [COMMAND] [OPTIONS] SRC [DST]
 
-Cargo is a simple static site builder.
+Commands:
+
+  run                Process each file/template in SRC and write them to DST
 
 Arguments:
   SRC                Specify source files dir for your site.
@@ -34,7 +39,7 @@ Options:
 
 ### Examples
 
-See the [test](/test) directory for a test case:
+See the [test](/test) directory for a worked example:
 
 ```
 test/
@@ -49,7 +54,16 @@ test/
 └── {{friends}}.txt
 ```
 
-Use `make test` to publish a sample website:
+### 
+
+Start your first Cargo run
+
+```
+cargo run --context App=test/app_context.json --context Friends=test/friends_context.yaml test/ published/
+```
+
+### Run test cases
+Use `make test` to check everything is working smoothly:
 
 ```
 $ make test
