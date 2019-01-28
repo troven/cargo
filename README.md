@@ -50,7 +50,7 @@ export PATH=$PATH:$GOPATH/bin
 
 Or you can always use `make build` to keep the resulting executable relative to current directory. 
 
-### Cargo Usage
+### Cargo Run
 
 ```
 $ cargo run -h
