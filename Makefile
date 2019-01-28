@@ -1,4 +1,4 @@
-.PHONY: build build-docker install clean test test-run help default
+.PHONY: build build-docker install clean test test-run test-write help default
 
 BIN_NAME=cargo
 
@@ -22,6 +22,7 @@ help:
 	@echo '    make tag             Tag image created by package with latest, git commit and version'
 	@echo '    make test            Run tests on the source code of the project.'
 	@echo '    make test-run        Run tests using cargo executable (must be available in $$PATH).'
+	@echo '    make test-write      Run tests using cargo executable, writes files.'
 	@echo '    make push            Push tagged images to registry'
 	@echo '    make clean           Clean the directory tree.'
 	@echo
@@ -63,7 +64,7 @@ push: tag
 clean:
 	@rm -f bin/${BIN_NAME}
 	@rm -f bin/${BIN_NAME}_docker
-	@rm -rf published/
+	@rm -rf test/build/
 
 test:
 	go test ./...
@@ -71,6 +72,18 @@ test:
 test-run: export FOO_BAR=kek
 test-run:
 	cargo run --dry-run \
-		--context App=test/app_context.json \
-		--context Friends=test/friends_context.yaml \
-		test/ published/
+		--context test/cargo.yaml \
+		--context App=test/app.json \
+		--context Friends=test/friends.yaml \
+		test/cargo test/build
+
+test-write: export FOO_BAR=kek
+test-write:
+	cargo run \
+		--context test/cargo.yaml \
+		--context App=test/app.json \
+		--context Friends=test/friends.yaml \
+		test/cargo test/build
+
+	diff -r test/build test/build_expected
+

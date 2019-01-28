@@ -74,13 +74,14 @@ Options:
 
 ### Examples
 
-Check out the `[test](/test)` directory for a worked example:
+Check out the `[test/cargo](/test/cargo)` directory for a worked example:
 
 ```
-test/
+test/cargo/
 ├── _templated.md
-├── app_context.json
-├── friends_context.yaml
+├── _cargo.md
+├── app.json
+├── friends.yaml
 ├── subfolder
 │   └── {{os.RuntimeVersion}}.png
 ├── verbatim.jpg
@@ -94,7 +95,7 @@ test/
 Start your first Cargo run
 
 ```
-cargo run --context App=test/app_context.json --context Friends=test/friends_context.yaml test/ published/
+cargo run -c test/cargo.yaml --context App=test/app.json --context Friends=test/friends.yaml test/cargo test/build
 ```
 
 ### How it works?
@@ -151,7 +152,7 @@ Mutliple files are generated matching the Collection Path.
 So for collections, one file goes in - many may come out. So given the following "friends" Context:
 
 ```
-cat ./test/friends_context.yaml
+cat ./test/cargo/friends.yaml
 
 - { "Name": "Maxim", "Age": 26}
 - { "Name": "Ivan", "Age": 25}
@@ -160,7 +161,7 @@ cat ./test/friends_context.yaml
 you might expect to generate
 
 ```
-ls -1 ./published/
+ls -1 ./test/build/
 ...
 Ivan_25.txt
 Maxim_26.txt
@@ -206,8 +207,8 @@ Usage:
     make tag             Tag image created by package with latest, git commit and version
     make test            Run tests on the source code of the project.
     make test-run        Run tests using cargo executable (must be available in $PATH).
+    make test-write      Run tests using cargo executable, writes files.
     make push            Push tagged images to registry
     make clean           Clean the directory tree.
-
 ```
 

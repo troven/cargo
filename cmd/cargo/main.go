@@ -75,12 +75,11 @@ func runCmd(cmd *cli.Cmd) {
 				if err == nil {
 					if err == rootContext.LoadGlobalFromYAML(data) {
 						hasGlobal = true
+						continue
 					}
 				}
-				if !hasGlobal {
-					err := fmt.Errorf("incorrect context source specification: %s", source)
-					log.Fatalln(err)
-				}
+				err = fmt.Errorf("incorrect context source specification: %s", source)
+				log.Fatalln(err)
 			}
 			name := strings.TrimSpace(parts[0])
 			path := strings.TrimSpace(parts[1])
