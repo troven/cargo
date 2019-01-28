@@ -18,8 +18,6 @@ After installing Go, you'll need to clone this repo. If repo is public already, 
 go get -u github.com/troven/cargo/cmd/cargo
 ```
 
-Doh! Not a golang ninja? [start here](GO_NOOBS.md)
-
 ### Usage
 =======
 But while it is private, you'll need to clone it manually:
