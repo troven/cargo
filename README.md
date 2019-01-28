@@ -165,9 +165,9 @@ As we iterate over the collection, we add it the `Current` context.
 
 #### Environment
 
-We also load ENV and OS vars into the global context too.
+We also load `ENV` and `OS` vars into the global context too.
 
-All ENV variables are available as {{ .Env.FOO }} in the template.
+All `ENV` variables are available as `{{ .Env.FOO }}` in the template.
 
 #### Special template twist
 
