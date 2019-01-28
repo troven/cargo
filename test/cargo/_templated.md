@@ -1,6 +1,6 @@
 ## Template Test
 
-Hello! This template has been compiled on {{ .OS.OS }}-{{ .OS.Arch }} using {{ .OS.RuntimeVersion }}
+Hello!
 
 I have some Env variables:
 
