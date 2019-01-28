@@ -119,9 +119,27 @@ Single template files are prefixed with an `_` underscore.
 
 When the template is evaluated, the output file is copied without the prefix.
 
-#### Collections
+#### Collection Templates
 
-Collections are identified by special characters in the path name. A collection template contain a template expression embedded in the file or folder name. We call these "Expression Paths".
+Collections are identified by special characters in the path name. 
+
+A collection template contain a Collection Path in the file or folder name.
+
+There are however, two types of Collection Path - array paths and object paths.
+
+Both `{{app.path}}`, `{{friends.name}}` match a field within a nested object where as `{{friends}}` matches an array. 
+
+#### Object Collection
+
+The key/index of the matched collection (set/array) is interpolated into the output path filename.
+
+Folders are created as needed - the substituted key can even contain a path separator :-)
+
+As we iterate over the collection, we add it the `Current` context.
+
+Both `{{app.path}}`, `{{friends.name}}` match a field within a nested object. In this
+
+Mutliple files are generated matching the Collection Path.
 
 ```
 ...
@@ -129,8 +147,6 @@ Collections are identified by special characters in the path name. A collection 
 {{friends.name}}_{{friends.age}}.txt
 {{friends}}.txt
 ```
-
-You can clearly see that `{{app.path}}`, `{{friends.name}}` and `{{friends}}` are all template expressions.
 
 So for collections, one file goes in - many may come out. So given the following "friends" Context:
 
@@ -151,17 +167,19 @@ Maxim_26.txt
 ...
 ```
 
-#### Creating templates
+#### Array Collection
 
-Templates are quite simple to create. You can see lots of examples in the `./test/` folder. Or [learn more here](Templates.md)
+These are single files where-in the Current context is set to each item in the array.
 
-#### Expression Paths
+#### Creating Templates
 
-Specifically, the key/index of the matched collection (set/array) is interpolated into the output path filename.
+Templates are quite simple to create - they are simply text files. Whatever you can express in a text file can be easily converted into a template.
 
-Folders are created as needed - the substituted key can even contain a path separator :-)
+Cargo regularly builds websites and documentation (HTML/CSS), images and diagrams (SVG), data files (XML, JSON), software components (Java & Javascript) and integration tests (BDD/TDD).
 
-As we iterate over the collection, we add it the `Current` context.
+When Cargo encounters a template file, it loads the Context then interprets the template. The template instructs Cargo how to translate the contents into the final product. 
+
+You can see lots of examples in the `./test/` folder. Or [learn more here](Templates.md)
 
 #### Environment
 
