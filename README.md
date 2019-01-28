@@ -19,8 +19,8 @@ go get -u github.com/troven/cargo/cmd/cargo
 ```
 
 ### Usage
-=======
-But while it is private, you'll need to clone it manually:
+
+Whilst it is private, you'll need to clone it manually:
 
 ```
 mkdir -p $GOPATH/src/github.com/troven/cargo
@@ -44,19 +44,6 @@ export PATH=$PATH:$GOPATH/bin
 Or you can always use `make build` to keep the resulting executable relative to current directory. 
 
 ### Cargo Usage
->>>>>>> b8e876b31348ef4586ef9fd726b88559069bae06
-
-```
-$ cargo -h
-
-Usage: cargo [COMMAND] [OPTIONS] SRC [DST]
-
-Commands:
-  run          The Cargo run operation moves source files to the destination folder, processing the
-               template files it encounters.
-
-  version      Prints the version
-```
 
 ```
 $ cargo run -h
