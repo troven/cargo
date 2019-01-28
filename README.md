@@ -74,7 +74,7 @@ Options:
 
 ### Examples
 
-See the [test](/test) directory for a worked example:
+Check out the `[test](/test)` directory for a worked example:
 
 ```
 test/
