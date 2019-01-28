@@ -2,7 +2,7 @@
 
 <img src="docs/cargo.png" width="300px" />
 
-Cargo is a tiny static file generator written in golang for elegance, efficiency and relevance. 
+Cargo is a tiny static file generator written in golang for elegance, efficiency and embedding. 
 
 It works by processing a nested folder of files and generating new files and folders.
 
