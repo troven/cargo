@@ -119,6 +119,10 @@ Single template files are prefixed with an `_` underscore.
 
 When the template is evaluated, the output file is copied without the prefix.
 
+For example `_templated.md` is a single template. It will output as `template.md`.
+
+Also `{{app.path}}` is also a single template - because it resolves to a single value.
+
 #### Collection Templates
 
 Collections are identified by special characters in the path name. 
@@ -127,7 +131,11 @@ A collection template contain a Collection Path in the file or folder name.
 
 To add another "complication" - there two types of Collection Path - object paths and array paths. 
 
-Both `{{app.path}}`, `{{friends.name}}` match a field within a nested object where as `{{friends}}` matches an array. 
+The `{{friends.name}}_{{friends.age}}.txt` expression matches two fields within a nested object. 
+
+In this case, mutliple files are output - it depends on the  Collection Path.
+
+Contrast that with `{{friends}}.txt` that matches an Array Collection (see below). 
 
 #### Object Collection
 
@@ -137,41 +145,30 @@ This means you can build complex output filenames that depends on the Context.
 
 Of course, folders are created as needed - even when the substituted key contains a path separator. In this case, the final path is computed from the original path with the new path embedded within.
 
-As we iterate over the collection, we add it the `Current` context.
+When Cargo processes `{{friends.name}}_{{friends.age}}` - each item in the `{{friends}}` collection is feed into a new file with the `Current` context set to the item value.
 
-Both `{{app.path}}`, `{{friends.name}}` match a field within a nested object. In this
+#### Array Collection
 
-Mutliple files are generated matching the Collection Path.
+The `{{friends}}.txt` that matches an Array Collection. These are single files - the Current context is passed the array.
 
-```
-...
-{{app.path}}.txt
-{{friends.name}}_{{friends.age}}.txt
-{{friends}}.txt
-```
 
-So for collections, one file goes in - many may come out. So given the following "friends" Context:
+#### Multiple File Generation
+
+So for Object Collections, it's usual that one file goes in and many come out:
 
 ```
-cat ./test/friends_context.yaml
+cat ./test/friends.yaml
 
 - { "Name": "Maxim", "Age": 26}
 - { "Name": "Ivan", "Age": 25}
 ```
 
-you might expect to generate
+Given  our pattern - `{{friends.name}}_{{friends.age}}` - you'd be correct to expect two output files in `./published/`:
 
 ```
-ls -1 ./published/
-...
 Ivan_25.txt
 Maxim_26.txt
-...
 ```
-
-#### Array Collection
-
-These are single files where-in the Current context is set to each item in the array.
 
 #### Creating Templates
 
@@ -181,7 +178,7 @@ Cargo regularly builds websites and documentation (HTML/CSS), images and diagram
 
 When Cargo encounters a template file, it loads the Context then interprets the template. The template instructs Cargo how to translate the contents into the final product. 
 
-You can see lots of examples in the `./test/` folder. Or [learn more here](Templates.md)
+You can see lots of examples in the `./test/` folder. Or [learn more here](TEMPLATES.md)
 
 #### Environment
 

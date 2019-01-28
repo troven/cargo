@@ -1,6 +1,6 @@
 ## Template Test
 
-Hello! This template has been compiled on darwin-amd64 using go1.11.4
+Hello!
 
 I have some Env variables:
 
