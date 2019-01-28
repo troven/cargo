@@ -12,15 +12,19 @@ If you want to build the executable on your own machine, you need to install Go 
 
 Doh! Not a golang ninja? [start here](GO_NOOBS.md)
 
-After installing Go, you'll need to clone this repo. If repo is public already, just run this:
+After installing Go, you'll need to clone this repo. 
+
+#### Public Branch
+
+If repo is public already, just run this:
 
 ```
 go get -u github.com/troven/cargo/cmd/cargo
 ```
 
-### Usage
+#### Private Branch
 
-Whilst it is private, you'll need to clone it manually:
+For a private branch, you'll need to clone it manually:
 
 ```
 mkdir -p $GOPATH/src/github.com/troven/cargo
@@ -28,6 +32,9 @@ cd $GOPATH/src/github.com/troven/cargo
 git clone git@github.com:troven/cargo.git .
 go get github.com/troven/cargo
 ```
+
+### Usage
+
 
 After running `go get` on the root package name, the `cargo` executable will not be built yet. To build or install it, use the provided script:
 
