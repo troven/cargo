@@ -153,7 +153,7 @@ Maxim_26.txt
 
 #### Creating templates
 
-Templates are quite simple to create. You can see lots of examples in the ./test/ folder. Or [learn more here](Templates.md)
+Templates are quite simple to create. You can see lots of examples in the `./test/` folder. Or [learn more here](Templates.md)
 
 #### Expression Paths
 
