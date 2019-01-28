@@ -115,7 +115,7 @@ One or more YAML/JSON files can be loaded into the Context from CLI using the `-
 
 #### Single Templates
 
-Single template files are prefixed with a `_` underscore.
+Single template files are prefixed with an `_` underscore.
 
 When the template is evaluated, the output file is copied without the prefix.
 
