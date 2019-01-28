@@ -103,7 +103,7 @@ Most files are copied verbatim. Some are processed. One has a twist ...
 
 There are two types of processed files - "singles" and "collections": Their contents are processed as a golang text template - [read a tutorial](https://blog.gopheracademy.com/advent-2017/using-go-templates/).
 
-You can see working examples in the ./test/ folder. Or take a deeper peek and [learn more here](Templates.md)
+You can see working examples in the `./test/` folder. Or take a deeper peek and [learn more here](Templates.md)
 
 Each template is executed by applying them to a data structure - called the Context. 
 
@@ -111,11 +111,11 @@ The files can be any type - including movies, audio, images, software, etc.
 
 The templates can be any text file - HTML, SVG, XML, JSON, source code (like Java & Javascript).
 
-One or more YAML/JSON files can be loaded into the Context from CLI using the "--context" option.
+One or more YAML/JSON files can be loaded into the Context from CLI using the `--context` option.
 
 #### Single Templates
 
-Single template files are prefixed with a _ underscore.
+Single template files are prefixed with a `_` underscore.
 
 When the template is evaluated, the output file is copied without the prefix.
 
@@ -130,7 +130,7 @@ Collections are identified by special characters in the path name. A collection 
 {{friends}}.txt
 ```
 
-You can clearly see that {{app.path}}, {{friends.name}} and {{friends}} are all template expressions.
+You can clearly see that `{{app.path}}`, `{{friends.name}}` and `{{friends}}` are all template expressions.
 
 So for collections, one file goes in - many may come out. So given the following "friends" Context:
 
