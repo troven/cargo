@@ -10,7 +10,7 @@ It works by processing a nested folder of files and generating new files and fol
 
 If you want to build the executable on your own machine, you need to install Go first. Open [Downloads](https://golang.org/dl/) and get at least Go1.11+ for your platform. Or you can install using `brew` on macOS or using your distro package manager. Prefer most recent versions for better compatibility.
 
-Doh! Not a golang ninja? [start here](GO_NOOBS.md)
+Doh! Not a golang ninja? [start here](./docs/GO_NOOBS.md)
 
 After installing Go, you'll need to clone this repo. 
 
@@ -178,7 +178,7 @@ Cargo regularly builds websites and documentation (HTML/CSS), images and diagram
 
 When Cargo encounters a template file, it loads the Context then interprets the template. The template instructs Cargo how to translate the contents into the final product. 
 
-You can see lots of examples in the `./test/` folder. Or [learn more here](TEMPLATES.md)
+You can see lots of examples in the `./test/` folder. Or [learn more here](./docs/TEMPLATES.md)
 
 #### Environment
 
