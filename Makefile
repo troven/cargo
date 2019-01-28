@@ -66,13 +66,10 @@ clean:
 	@rm -rf published/
 
 test:
-<<<<<<< HEAD
-=======
 	go test ./...
 
 test-run: export FOO_BAR=kek
 test-run:
->>>>>>> b8e876b31348ef4586ef9fd726b88559069bae06
 	cargo run --dry-run \
 		--context App=test/app_context.json \
 		--context Friends=test/friends_context.yaml \
