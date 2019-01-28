@@ -28,15 +28,15 @@ func main() {
 }
 
 func runCmd(cmd *cli.Cmd) {
-	logLevel := cmd.IntOpt("l log-level", 4, "Sets the log level [0 = no log, 5 = debug].")
+	logLevel := cmd.IntOpt("l log-level", 3, "Sets the log level [0 = no log, 5 = debug].")
 	dryRun := cmd.BoolOpt("d dry-run", false, "Do not modify filesystem, only print planned actions.")
 	delimiters := cmd.StringOpt("delimiters", "{{,}}", "Comma-seprated delimiters to scan in templates, left and right.")
 	modePrefix := cmd.StringOpt("prefix", "_", "Prefix in filenames to specify singular templates.")
 	contextSources := cmd.StringsOpt("c context", nil,
 		"Specify multiple context sources in format Name=<yaml/json file> (e.g. Values=helm-chart-values.yaml)")
 
-	srcDir := cmd.StringArg("SRC", "", "Specify source files dir for your site.")
-	dstDir := cmd.StringArg("DST", "published/", "Specify destination dir for your site publication.")
+	srcDir := cmd.StringArg("SRC", "cargo/", "Specify source files dir for your site.")
+	dstDir := cmd.StringArg("DST", "build/", "Specify destination dir for your site publication.")
 
 	cmd.Spec = "[OPTIONS] SRC [DST]"
 	cmd.Before = func() {
@@ -67,10 +67,18 @@ func runCmd(cmd *cli.Cmd) {
 			log.Fatalln(err)
 		}
 		rootContext := NewTemplateContext()
+		var hasGlobal bool
 		for _, source := range *contextSources {
 			parts := strings.Split(source, "=")
 			if len(parts) != 2 {
-				err := fmt.Errorf("incorrect context source specification: %s", source)
+				data, err := ioutil.ReadFile(parts[0])
+				if err == nil {
+					if err == rootContext.LoadGlobalFromYAML(data) {
+						hasGlobal = true
+						continue
+					}
+				}
+				err = fmt.Errorf("incorrect context source specification: %s", source)
 				log.Fatalln(err)
 			}
 			name := strings.TrimSpace(parts[0])
@@ -93,6 +101,14 @@ func runCmd(cmd *cli.Cmd) {
 			} else {
 				err := fmt.Errorf("unsupported Context source format: %s", sourceExt)
 				log.Fatalln(err)
+			}
+		}
+		if !hasGlobal {
+			data, err := ioutil.ReadFile("cargo.yaml")
+			if err == nil {
+				if err == rootContext.LoadGlobalFromYAML(data) {
+					hasGlobal = true
+				}
 			}
 		}
 		if isDebug(logLevel) {

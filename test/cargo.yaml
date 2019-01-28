@@ -1,0 +1,8 @@
+Cargo:
+    Repo: troven
+    Name: lab-demo-cargo
+    Author:
+        Name: "Troven"
+        Email: "cto@troven.co"
+    Description: my first example package
+    Version: 0.0.1

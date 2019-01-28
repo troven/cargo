@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -24,18 +25,14 @@ func NewTemplateContext() TemplateContext {
 		ver = fmt.Sprintf("%s (commit %s)", version.Version, version.GitCommit)
 	}
 	return TemplateContext{
-		"Cargo": &Cargo{
-			Version:          ver,
-			ContextCreatedAt: time.Now(),
+		"Cargo": Cargo{
+			"GeneratorVersion": ver,
+			"ContextCreatedAt": time.Now(),
 		},
 	}
 }
 
-// Cargo keeps context fields related to the renderer.
-type Cargo struct {
-	Version          string
-	ContextCreatedAt time.Time
-}
+type Cargo map[string]interface{}
 
 // LengthOf returns length of a collection specified by selector. If there is no
 // field matching selector, or its value is not indexable, it will return false.
@@ -160,6 +157,23 @@ func (c TemplateContext) LoadFromYAML(name string, data []byte) error {
 		return err
 	}
 	c[name] = fields
+	return nil
+}
+
+// LoadGlobalFromYAML parses a YAML source and builds global Cargo context from that, setting it to
+// the "Cargo" field of the context object.
+func (c TemplateContext) LoadGlobalFromYAML(data []byte) error {
+	var fields map[string]map[string]interface{}
+	if err := yaml.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if fields["Cargo"] == nil {
+		return errors.New("context is missing root Cargo field, not a valid global context")
+	}
+	global := c["Cargo"].(Cargo)
+	for k, v := range fields["Cargo"] {
+		global[k] = v
+	}
 	return nil
 }
 

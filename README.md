@@ -125,15 +125,17 @@ Collections are identified by special characters in the path name.
 
 A collection template contain a Collection Path in the file or folder name.
 
-There are however, two types of Collection Path - array paths and object paths.
+To add another "complication" - there two types of Collection Path - object paths and array paths. 
 
 Both `{{app.path}}`, `{{friends.name}}` match a field within a nested object where as `{{friends}}` matches an array. 
 
 #### Object Collection
 
-The key/index of the matched collection (set/array) is interpolated into the output path filename.
+Object paths are arguably, the simpliest and most powerful. The key/index of the matched collection (set/array) is interpolated into the output path filename.
 
-Folders are created as needed - the substituted key can even contain a path separator :-)
+This means you can build complex output filenames that depends on the Context.
+
+Of course, folders are created as needed - even when the substituted key contains a path separator. In this case, the final path is computed from the original path with the new path embedded within.
 
 As we iterate over the collection, we add it the `Current` context.
 

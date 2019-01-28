@@ -1,0 +1,5 @@
+Friend List:
+
+{{ range .Current -}}
+	* {{ .Name }}
+{{ end -}}
