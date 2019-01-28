@@ -97,34 +97,7 @@ Start your first Cargo run
 cargo run --context App=test/app_context.json --context Friends=test/friends_context.yaml test/ published/
 ```
 
-### Creating templates
-
-Templates are quite simple to create. You can see lots of examples in the ./test/ folder. Or [learn more here](Templates.md)
-
-### Run test cases
-Use `make test` to check everything is working smoothly:
-
-```
-$ make test
-cargo run\
-        --context App=test/app_context.json \
-        --context Friends=test/friends_context.yaml \
-        test/ published/
-
-INFO[0000] action#1: new dir [dst] if not exists
-INFO[0000] action#2: copy file [dst]/app_context.json
-INFO[0000] action#3: copy file [dst]/friends_context.yaml
-INFO[0000] action#4: copy file [dst]/verbatim.jpg
-INFO[0000] action#5: new file [dst]/templated.md size=280 B (no overwrite)
-INFO[0000] action#6: copy file [dst]/subfolder/go1.11.2.png
-INFO[0000] action#7: new file [dst]/subfolder2/file.txt size=51 B (no overwrite)
-INFO[0000] action#8: new file [dst]/Maxim_26.txt size=41 B (no overwrite)
-INFO[0000] action#9: new file [dst]/Ivan_25.txt size=40 B (no overwrite)
-INFO[0000] action#10: new file [dst]/friends.txt size=29 B (no overwrite)
-INFO[0000] done in 3.763994ms
-```
-
-#### How it works?
+### How it works?
 
 Most files are copied verbatim. Some are processed. One has a twist ...
 
@@ -177,6 +150,10 @@ Ivan_25.txt
 Maxim_26.txt
 ...
 ```
+
+#### Creating templates
+
+Templates are quite simple to create. You can see lots of examples in the ./test/ folder. Or [learn more here](Templates.md)
 
 #### Expression Paths
 
