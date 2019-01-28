@@ -1,4 +1,7 @@
 bin/cargo
 test/build
+published
+local
+
 
 .DS_Store
