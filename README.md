@@ -33,7 +33,7 @@ git clone git@github.com:troven/cargo.git .
 go get github.com/troven/cargo
 ```
 
-### Usage
+### Building from source
 
 
 After running `go get` on the root package name, the `cargo` executable will not be built yet. To build or install it, use the provided script:
