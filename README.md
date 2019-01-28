@@ -161,7 +161,7 @@ Specifically, the key/index of the matched collection (set/array) is interpolate
 
 Folders are created as needed - the substituted key can even contain a path separator :-)
 
-As we iterate over the collection, we add it the "Current" context.
+As we iterate over the collection, we add it the `Current` context.
 
 #### Environment
 
