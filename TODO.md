@@ -106,8 +106,13 @@ When manfiests have overlapping destinations conflicting files - those last in t
 
 It was the deliberate use of "." taht forced the overwrite behaviour in the example above.
 
+Alternative Templating Languages
+---------------
+
+Give consideration to [Soy - cross platform templates](https://godoc.org/github.com/robfig/soy)
+
 ROADMAP
--------
+=======
 
 1) Initil PoC v0.1.0
 2) cargo run v0.2.0
@@ -118,9 +123,3 @@ ROADMAP
 7) repo add - to download packages  v0.7.0
 8) repo index / refresh / search  v0.8.0
 9) training / documentation    v0.9.0
-10) UAT v1.0.0
-
-
-
-
-
