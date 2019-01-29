@@ -1,4 +1,4 @@
-## cargo  by troven
+## cargo by troven
 
 <img src="docs/cargo.png" width="300px" />
 

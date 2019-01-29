@@ -13,7 +13,7 @@ cargo run\
         --context Friends=test/friends.yaml \
         test/cargo test/build
 INFO[0000] action#1: new dir [dst] if not exists
-INFO[0000] action#2: copy file [dst]/verbatim.jpg
+INFO[0000] action#2: copy file [dst]/cargo.png
 INFO[0000] action#3: new file [dst]/cargo.md size=135 B (no overwrite)
 INFO[0000] action#4: new file [dst]/templated.md size=280 B (no overwrite)
 INFO[0000] action#5: copy file [dst]/subfolder/go1.11.2.png

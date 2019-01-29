@@ -6,3 +6,5 @@ Cargo:
         Email: "cto@troven.co"
     Description: my first example package
     Version: 0.0.1
+Foo:
+    Bar: "baz"
