@@ -174,6 +174,17 @@ func (c TemplateContext) LoadGlobalFromYAML(data []byte) error {
 	for k, v := range fields["Cargo"] {
 		global[k] = v
 	}
+	for k, v := range fields {
+		if k != "Cargo" && k != "Env" {
+			if c[k] == nil {
+				c[k] = make(map[string]interface{})
+			}
+			for k2, v2 := range v {
+				container := c[k].(map[string]interface{})
+				container[k2] = v2
+			}
+		}
+	}
 	return nil
 }
 

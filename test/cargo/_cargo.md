@@ -5,3 +5,5 @@ Loading from repo {{ .Cargo.Repo }} ({{ .Cargo.Name }} v{{.Cargo.Version}}):
     * Email: {{ .Cargo.Author.Email }}
 
 {{ .Cargo.Description }}
+
+Oh, also another root field: {{.Foo.Bar}}
