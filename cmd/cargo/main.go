@@ -16,7 +16,7 @@ import (
 	"github.com/troven/cargo/version"
 )
 
-var app = cli.App("cargo", "Cargo is a simple static site builder.")
+var app = cli.App("cargo", "Cargo is a simple build tool.")
 
 func main() {
 	app.Command("run", "The Cargo run operation moves source files to the destination folder, "+

@@ -1,5 +1,5 @@
 # cargo
-Cargo is a simple static site builder
+Cargo helps DevOps teams to achieve consistent configuration automation.
 
 It works by processing a nested folder of files and generating new files and folders.
 
