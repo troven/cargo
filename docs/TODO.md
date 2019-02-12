@@ -109,12 +109,13 @@ It was the deliberate use of "." taht forced the overwrite behaviour in the exam
 Alternative Templating Languages
 ---------------
 
+Add Sprig Template Functions - https://github.com/Masterminds/sprig
 Give consideration to [Soy - cross platform templates](https://godoc.org/github.com/robfig/soy)
 
 ROADMAP
 =======
 
-1) Initil PoC v0.1.0
+1) Initial PoC v0.1.0
 2) cargo run v0.2.0
 3) Use Cargo.yaml if no context found - use as top-level Context v0.3.0
 4) Cargo.partials - reference from template files v0.4.0
