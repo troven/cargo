@@ -1,6 +1,6 @@
 ## cargo by troven
 
-<img src="docs/cargo.png" width="300px" />
+<img src="cargo.png" width="300px" />
 
 ### Advanced fields
 
