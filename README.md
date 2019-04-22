@@ -103,7 +103,7 @@ Most files are copied verbatim. Some are processed. One has a twist ...
 
 There are two types of processed files - "singles" and "collections": Their contents are processed as a golang text template - [read a tutorial](https://blog.gopheracademy.com/advent-2017/using-go-templates/).
 
-You can see working examples in the `./test/` folder. Or take a deeper peek and [learn more here](Templates.md)
+You can see working examples in the `./test/` folder. Or take a deeper peek and [learn more here](docs/Templates.md)
 
 Each template is executed by applying them to a data structure - called the Context. 
 
