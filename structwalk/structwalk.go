@@ -22,7 +22,6 @@ func FieldValue(path string, in interface{}) (v interface{}, found bool) {
 	}
 	cur := reflect.ValueOf(in)
 	for i, part := range parts {
-		part := strings.ToLower(part)
 		for {
 			if cur.Kind() == reflect.Ptr || cur.Kind() == reflect.Interface {
 				cur = cur.Elem()
@@ -32,13 +31,13 @@ func FieldValue(path string, in interface{}) (v interface{}, found bool) {
 		}
 		if cur.Kind() == reflect.Struct {
 			cur = cur.FieldByNameFunc(func(name string) bool {
-				return strings.ToLower(name) == part
+				return name == part
 			})
 		} else if cur.Kind() == reflect.Map {
 			keys := cur.MapKeys()
 			var keyFound bool
 			for _, k := range keys {
-				if strings.ToLower(k.String()) == part {
+				if k.String() == part {
 					cur = cur.MapIndex(k)
 					keyFound = true
 					break

@@ -210,7 +210,7 @@ type collectionCache struct {
 // RenderFilepath yields a map of one or multiple file paths based on path template. If template references a collection,
 // the output mapping will have all keys mapped to the corresponding TemplateContext with "Current" field set.
 //
-// Example: "{{ friends.name }}"" will be mapped as
+// Example: "{{ .Friends.Name }}"" will be mapped as
 // ("Alice" => TemplateContext), where TemplateContext.Current is TemplateContext.Friends[0].
 // ("Bob" => TemplateContext), where TemplateContext.Current is TemplateContext.Friends[1].
 func (l *TemplateLoader) RenderFilepath(
@@ -225,8 +225,8 @@ func (l *TemplateLoader) RenderFilepath(
 	// using idx as an offset in the collection, if collection references are used in pathTemplate.
 	//
 	// The template can only have one collection reference, but multiple collection item field references.
-	// For example, it can has {{friends.name}}_{{friends.age}} so the collection "friends" will be traversed once,
-	// and on each idx like friends[0], friends[1], ..., friends[idx] these placeholders will be replaced
+	// For example, it can have {{.Friends.Name}}_{{.Friends.Age}} so the collection "Friends" will be traversed once,
+	// and on each idx like Friends[0], Friends[1], ..., Friends[idx] these placeholders will be replaced
 	// with "name" and "age" field values from the corresponding collection items.
 	replaceWithCurrent := func(idx int) (string, TemplateContext, error) {
 		var currentContext TemplateContext
@@ -276,7 +276,7 @@ func (l *TemplateLoader) RenderFilepath(
 				log.WithField("field", field).Warningln("filename template field is not resolved")
 				return ""
 			}
-			if item, ok := rootContext.Item(field); ok {
+			if item, ok := rootContext.Item(selector); ok {
 				return fmt.Sprintf("%v", item)
 			}
 			log.WithField("field", field).Warningln("filename template field is not resolved")

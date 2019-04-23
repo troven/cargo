@@ -14,11 +14,11 @@ Examples of referencing Env:
 
 Fields exported from OS:
 
-* {{ OS.PathSeparator }}, example: / (or \ on Windows)
-* {{ OS.PathListSeparator }}, example: ;
-* {{ OS.WorkDir }}, example: /home/user/dev/k8s/configs
-* {{ OS.Hostname }}, example: death.star
-* {{ OS.Executable }}, example: cargo
-* {{ OS.RuntimeVersion }}, example: go1.11.2.png
-* {{ OS.Arch }}, example: amd64
-* {{ OS.OS }}, example: linux
+* {{ .OS.PathSeparator }}, example: / (or \ on Windows)
+* {{ .OS.PathListSeparator }}, example: ;
+* {{ .OS.WorkDir }}, example: /home/user/dev/k8s/configs
+* {{ .OS.Hostname }}, example: death.star
+* {{ .OS.Executable }}, example: cargo
+* {{ .OS.RuntimeVersion }}, example: go1.11.2.png
+* {{ .OS.Arch }}, example: amd64
+* {{ .OS.OS }}, example: linux

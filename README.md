@@ -82,11 +82,11 @@ test/
 ├── app_context.json
 ├── friends_context.yaml
 ├── subfolder
-│   └── {{os.RuntimeVersion}}.png
+│   └── {{.OS.RuntimeVersion}}.png
 ├── cargo.png
-├── {{app.path}}.txt
-├── {{friends.name}}_{{friends.age}}.txt
-└── {{friends}}.txt
+├── {{.App.Path}}.txt
+├── {{.Friends.Name}}_{{.Friends.Age}}.txt
+└── {{.Friends}}.txt
 ```
 
 ### 
