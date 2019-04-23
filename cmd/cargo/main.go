@@ -174,6 +174,7 @@ func runCmd(cmd *cli.Cmd) {
 					relativePath := strings.TrimPrefix(source, srcAbsPath)
 					relativeOutput := strings.TrimPrefix(output, srcAbsPath)
 					target := filepath.Join(*dstDir, relativeOutput)
+					target = removeModePrefix(target, *modePrefix)
 					if tpl == nil {
 						collectionActions = append(collectionActions, CopyFileAction(*dstDir, target, source))
 						continue
