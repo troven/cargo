@@ -10,6 +10,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/Masterminds/sprig"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -123,7 +124,7 @@ func NewTemplateLoader(paths []string, opts *TemplateLoaderOptions) (*TemplateLo
 			loader.templates[TemplateModeSingle] = set
 		}
 
-		tpl, err := template.New(source).ParseFiles(source)
+		tpl, err := template.New(source).Funcs(sprig.TxtFuncMap()).ParseFiles(source)
 		if err != nil {
 			err = fmt.Errorf("template parse error: %v", err)
 			return nil, err
@@ -139,7 +140,7 @@ func NewTemplateLoader(paths []string, opts *TemplateLoaderOptions) (*TemplateLo
 			loader.templates[TemplateModeCollection] = set
 		}
 
-		tpl, err := template.New(source).ParseFiles(source)
+		tpl, err := template.New(source).Funcs(sprig.TxtFuncMap()).ParseFiles(source)
 		if isBinaryContent(err) {
 			set[source] = nil
 			continue
