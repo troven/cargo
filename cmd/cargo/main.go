@@ -142,6 +142,8 @@ func runCmd(cmd *cli.Cmd) {
 			if err != nil {
 				err = fmt.Errorf("template rendering failed for %s: %v", relativePath, err)
 				log.Fatalln(err)
+			} else if isEmptyOrWhitespace(contents) {
+				return nil
 			}
 			target := filepath.Join(*dstDir, relativePath)
 			target = removeModePrefix(target, *modePrefix)
@@ -180,6 +182,8 @@ func runCmd(cmd *cli.Cmd) {
 					if err != nil {
 						err = fmt.Errorf("template rendering failed for %s: %v", relativePath, err)
 						log.Fatalln(err)
+					} else if isEmptyOrWhitespace(contents) {
+						continue
 					}
 					if info, err := os.Stat(target); os.IsNotExist(err) {
 						collectionActions = append(collectionActions, CreateNewFileAction(*dstDir, target, contents))
@@ -234,6 +238,21 @@ func versionCmd(cmd *cli.Cmd) {
 
 func isDebug(logLevel *int) bool {
 	return *logLevel >= 5
+}
+
+func isEmptyOrWhitespace(contents []byte) bool {
+	if len(contents) == 0 {
+		return true
+	} else if len(contents) > 512 {
+		// we set a reasonable bounds to file size
+		return false
+	}
+	for _, r := range contents {
+		if r != '\n' && r != '\r' && r != ' ' {
+			return false
+		}
+	}
+	return true
 }
 
 func renderTemplate(tpl *template.Template, source string, context TemplateContext) ([]byte, error) {
