@@ -4,7 +4,7 @@
 
 Cargo is a tiny static file generator written in golang for elegance, efficiency and embedding. 
 
-It works by processing a nested folder of files and generating new files and folders.
+It works by processing a nested folder of files and templates to generate new files and folders.
 
 ### Installation
 
@@ -49,6 +49,8 @@ export PATH=$PATH:$GOPATH/bin
 ```
 
 Or you can always use `make build` to keep the resulting executable relative to current directory. 
+
+# Quick Start
 
 ### Cargo Run
 
@@ -131,11 +133,11 @@ A collection template contain a Collection Path in the file or folder name.
 
 To add another "complication" - there two types of Collection Path - object paths and array paths. 
 
-The `{{friends.name}}_{{friends.age}}.txt` expression matches two fields within a nested object. 
+The `{{.Friends.name}}_{{.Friends.age}}.txt` expression matches two fields within a nested object. 
 
 In this case, mutliple files are output - it depends on the  Collection Path.
 
-Contrast that with `{{friends}}.txt` that matches an Array Collection (see below). 
+Contrast that with `{{.Friends}}.txt` that matches an Array Collection (see below). 
 
 #### Object Collection
 
@@ -145,11 +147,11 @@ This means you can build complex output filenames that depends on the Context.
 
 Of course, folders are created as needed - even when the substituted key contains a path separator. In this case, the final path is computed from the original path with the new path embedded within.
 
-When Cargo processes `{{friends.name}}_{{friends.age}}` - each item in the `{{friends}}` collection is feed into a new file with the `Current` context set to the item value.
+When Cargo processes `{{.Friends.name}}_{{.Friends.age}}` - each item in the `{{.Friends}}` collection is feed into a new file with the `Current` context set to the item value.
 
 #### Array Collection
 
-The `{{friends}}.txt` that matches an Array Collection. These are single files - the Current context is passed the array.
+The `{{.Friends}}.txt` that matches an Array Collection. These are single files - the Current context is passed the array.
 
 
 #### Multiple File Generation
@@ -163,7 +165,7 @@ cat ./test/friends.yaml
 - { "Name": "Ivan", "Age": 25}
 ```
 
-Given  our pattern - `{{friends.name}}_{{friends.age}}` - you'd be correct to expect two output files in `./published/`:
+Given  our pattern - `{{.Friends.name}}_{{.Friends.age}}` - you'd be correct to expect two output files in `./published/`:
 
 ```
 Ivan_25.txt
