@@ -1,10 +1,10 @@
 Cargo:
     Repo: troven
-    Name: lab-demo-cargo
+    Name: troven-cargo-example
     Author:
         Name: "Troven"
         Email: "cto@troven.co"
     Description: my first example package
-    Version: 0.0.1
+    Version: 0.2.1
 Foo:
     Bar: "baz"
